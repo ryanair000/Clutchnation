@@ -49,6 +49,10 @@ export const PSN_ID_REGEX = /^[a-zA-Z][a-zA-Z0-9_-]{2,15}$/;
 export const MAX_AVATAR_SIZE_MB = 2;
 export const MAX_EVIDENCE_SIZE_MB = 5;
 
+export const MIN_PASSWORD_LENGTH = 8;
+
+export const ALLOWED_EVIDENCE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
+
 /** Current season identifier */
 export const CURRENT_SEASON = '2026-S1';
 

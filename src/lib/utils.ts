@@ -37,3 +37,8 @@ export function getInitials(name: string): string {
     .toUpperCase()
     .slice(0, 2);
 }
+
+/** Validate redirect path is safe (relative, no protocol injection). */
+export function isSafeRedirect(path: string): boolean {
+  return path.startsWith('/') && !path.startsWith('//') && !path.includes(':');
+}

@@ -14,7 +14,11 @@ export async function POST(request: Request) {
   const matchId = form.get('matchId') as string;
   if (!file || !matchId) return NextResponse.json({ error: 'Missing file or matchId' }, { status: 400 });
 
-  const ext = file.name.split('.').pop();
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  const allowed = ['jpg', 'jpeg', 'png', 'webp'];
+  if (!allowed.includes(ext)) {
+    return NextResponse.json({ error: 'Only JPG, PNG and WebP images are allowed' }, { status: 400 });
+  }
   const filename = `evidence/${matchId}/${randomUUID()}.${ext}`;
 
   // Upload to Supabase Storage (bucket: evidence)

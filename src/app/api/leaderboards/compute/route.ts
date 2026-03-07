@@ -168,21 +168,15 @@ export async function POST(request: Request) {
     }
   }
 
-  // Delete old snapshots for this season and upsert new ones
-  await supabase
-    .from('leaderboard_snapshots')
-    .delete()
-    .eq('season', season);
-
+  // Upsert snapshots (avoids delete+insert race condition)
   if (snapshots.length > 0) {
-    // Batch insert in chunks of 500
     for (let i = 0; i < snapshots.length; i += 500) {
       const chunk = snapshots.slice(i, i + 500);
-      const { error: insertErr } = await supabase
+      const { error: upsertErr } = await supabase
         .from('leaderboard_snapshots')
-        .insert(chunk as any[]);
-      if (insertErr) {
-        return NextResponse.json({ error: insertErr.message }, { status: 500 });
+        .upsert(chunk as any[], { onConflict: 'user_id,season,mode' });
+      if (upsertErr) {
+        return NextResponse.json({ error: upsertErr.message }, { status: 500 });
       }
     }
   }

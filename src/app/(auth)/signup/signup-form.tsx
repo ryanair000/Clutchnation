@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { MIN_PASSWORD_LENGTH } from '@/lib/constants';
 
 export function SignupForm() {
   const [email, setEmail] = useState('');
@@ -111,12 +112,12 @@ export function SignupForm() {
             id="password"
             type="password"
             required
-            minLength={6}
+            minLength={MIN_PASSWORD_LENGTH}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
           />
-          <p className="mt-1 text-xs text-ink-light">Minimum 6 characters</p>
+          <p className="mt-1 text-xs text-ink-light">Minimum {MIN_PASSWORD_LENGTH} characters</p>
         </div>
 
         <button

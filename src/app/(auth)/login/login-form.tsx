@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { isSafeRedirect } from '@/lib/utils';
+import { MIN_PASSWORD_LENGTH } from '@/lib/constants';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -12,7 +14,8 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') ?? '/dashboard';
+  const rawRedirect = searchParams.get('redirect') ?? '/dashboard';
+  const redirect = isSafeRedirect(rawRedirect) ? rawRedirect : '/dashboard';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,7 +101,7 @@ export function LoginForm() {
             id="password"
             type="password"
             required
-            minLength={6}
+            minLength={MIN_PASSWORD_LENGTH}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
