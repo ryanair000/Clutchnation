@@ -20,10 +20,19 @@ export default async function StorePage({ searchParams }: Props) {
   const supabase = await createClient();
 
   // Fetch categories
-  const { data: categories } = await supabase
+  const { data: categories, error: catError } = await supabase
     .from('product_categories')
     .select('id, name, slug')
     .order('sort_order');
+
+  if (catError) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h1 className="text-3xl font-bold text-ink-900">Store</h1>
+        <p className="text-ink-400 mt-4">The store is being set up. Check back soon!</p>
+      </div>
+    );
+  }
 
   // Build product query
   let query = supabase
