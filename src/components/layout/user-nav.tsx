@@ -78,6 +78,13 @@ export function UserNav({ username, avatarUrl, isAdmin }: UserNavProps) {
           >
             Messages
           </Link>
+          <Link
+            href="/store/orders"
+            className="block px-4 py-2 text-sm text-ink hover:bg-surface-50"
+            onClick={() => setOpen(false)}
+          >
+            My Orders
+          </Link>
           {isAdmin && (
             <Link
               href="/admin"

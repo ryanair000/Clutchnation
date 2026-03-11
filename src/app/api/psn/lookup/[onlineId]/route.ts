@@ -1,75 +1,141 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { lookupPsnProfile } from '@/lib/psn/service';
+import { PsnError } from '@/lib/psn/errors';
+import { PSN_ID_REGEX } from '@/lib/constants';
+import { PSN_FEATURE_FLAGS } from '@/lib/psn/constants';
+import type { PsnLookupResponse } from '@/lib/psn/types';
 
-/**
- * PSN Lookup API Route
- * GET /api/psn/lookup/[onlineId]
- *
- * This is a placeholder for the PSN live data lookup service.
- * In production, this would use psn-api to fetch real PSN data.
- * Currently feature-flagged off by default.
- */
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ onlineId: string }> }
+  { params }: { params: Promise<{ onlineId: string }> },
 ) {
-  // Auth check — must be logged in
+  // Auth check
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      {
+        found: false,
+        data: null,
+        error: 'Unauthorized',
+        cached: false,
+      } satisfies PsnLookupResponse,
+      { status: 401 },
+    );
   }
 
-  // Feature flag check
+  // Feature flag check — default to enabled if flag row is missing
   const serviceClient = createServiceClient();
   const { data: flag } = await serviceClient
     .from('feature_flags')
     .select('enabled')
-    .eq('key', 'psn_lookup_enabled')
+    .eq('key', PSN_FEATURE_FLAGS.LOOKUP)
     .single();
 
-  if (!flag?.enabled) {
-    return NextResponse.json({
-      success: false,
-      error: 'PSN lookup is currently disabled',
-      data: null,
-      cached: false,
-    });
+  if (flag && !flag.enabled) {
+    return NextResponse.json(
+      {
+        found: false,
+        data: null,
+        reason: 'feature_disabled' as const,
+        error: 'PSN lookup is currently disabled',
+        cached: false,
+      } satisfies PsnLookupResponse,
+      { status: 503 },
+    );
   }
 
   const { onlineId } = await params;
 
-  // TODO: Implement actual PSN lookup using psn-api
-  // For now, return a placeholder response
-  // Production implementation should:
-  // 1. Check in-memory cache
-  // 2. Rate-limit (30 req/min)
-  // 3. Authenticate with NPSSO token
-  // 4. universalSearch → accountId
-  // 5. getProfileFromAccountId → profile
-  // 6. getBasicPresence → presence
-  // 7. getUserTrophyProfileSummary → trophies
-  // 8. Cache result
+  // Input validation
+  if (!PSN_ID_REGEX.test(onlineId)) {
+    return NextResponse.json(
+      {
+        found: false,
+        data: null,
+        reason: 'invalid_input' as const,
+        error: 'Invalid PSN Online ID format',
+        cached: false,
+      } satisfies PsnLookupResponse,
+      { status: 400 },
+    );
+  }
 
-  return NextResponse.json({
-    success: true,
-    cached: false,
-    data: {
-      accountId: null,
-      onlineId,
-      avatarUrl: null,
-      aboutMe: null,
-      isPlus: false,
-      presenceState: 'unknown',
-      presenceGame: null,
-      trophyLevel: null,
-      trophySummary: null,
-      fetchedAt: new Date().toISOString(),
-    },
-    error: null,
-  });
+  try {
+    const profile = await lookupPsnProfile(onlineId);
+
+    // Log successful lookup
+    await serviceClient.from('psn_link_events').insert({
+      user_id: user.id,
+      psn_account_id: profile.accountId,
+      event_type: 'lookup_success',
+      metadata: {
+        onlineId,
+        matchedOnlineId: profile.onlineId,
+      },
+    });
+
+    return NextResponse.json({
+      found: true,
+      data: profile,
+      cached: false,
+      error: null,
+    } satisfies PsnLookupResponse);
+  } catch (err) {
+    const psnErr =
+      err instanceof PsnError
+        ? err
+        : new PsnError('upstream_unavailable', 'Unexpected error');
+
+    // Log failed lookup
+    await serviceClient.from('psn_link_events').insert({
+      user_id: user.id,
+      psn_account_id: null,
+      event_type: 'lookup_failed',
+      metadata: {
+        onlineId,
+        errorCode: psnErr.code,
+        errorMessage: psnErr.message,
+      },
+    });
+
+    if (psnErr.code === 'not_found') {
+      return NextResponse.json(
+        {
+          found: false,
+          data: null,
+          reason: 'not_found' as const,
+          error: null,
+          cached: false,
+        } satisfies PsnLookupResponse,
+        { status: 404 },
+      );
+    }
+
+    if (psnErr.code === 'private_or_unavailable') {
+      return NextResponse.json({
+        found: true,
+        data: null,
+        reason: 'private_or_unavailable' as const,
+        error: null,
+        cached: false,
+      } satisfies PsnLookupResponse);
+    }
+
+    return NextResponse.json(
+      {
+        found: false,
+        data: null,
+        reason: psnErr.code as PsnLookupResponse['reason'],
+        error: psnErr.message,
+        cached: false,
+      } satisfies PsnLookupResponse,
+      { status: psnErr.statusCode },
+    );
+  }
 }

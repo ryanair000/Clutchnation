@@ -1,12 +1,8 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { ProfileHeader } from '@/components/shared/profile-header';
-import { PlayerStatsPanel } from '@/components/shared/player-stats-panel';
-import { ReportUserButton } from '@/components/shared/report-user-button';
-import { TournamentStatusBadge } from '@/components/tournaments/status-badge';
-import { formatDate } from '@/lib/utils';
+import { ProfileTabs } from '@/components/profile/profile-tabs';
 import { computePlayerStats } from '@/lib/stats';
 import { CURRENT_SEASON } from '@/lib/constants';
 
@@ -87,6 +83,17 @@ export default async function ProfilePage({ params }: Props) {
     .eq('mode', 'all')
     .maybeSingle();
 
+  // Fetch PSN cache data if user has a linked PSN account
+  let psnCache = null;
+  if (profile.psn_account_id) {
+    const { data } = await supabase
+      .from('psn_profile_cache')
+      .select('*')
+      .eq('psn_account_id', profile.psn_account_id)
+      .maybeSingle();
+    psnCache = data;
+  }
+
   // Compute stats
   const detailedStats = computePlayerStats(
     profile.id,
@@ -98,87 +105,22 @@ export default async function ProfilePage({ params }: Props) {
 
   return (
     <div className="container-app py-8">
-      <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} />
-      {!isOwnProfile && user && (
-        <div className="mt-2 flex justify-end">
-          <ReportUserButton reportedUserId={profile.id} reportedUsername={profile.username ?? 'User'} />
-        </div>
-      )}
-      <PlayerStatsPanel stats={detailedStats} />
-
-      {/* Recent matches */}
-      <section className="mt-8">
-        <h2 className="font-heading text-lg font-semibold">Recent Matches</h2>
-        {recentMatches && recentMatches.length > 0 ? (
-          <div className="mt-4 space-y-2">
-            {recentMatches.map((m) => {
-              const home = Array.isArray(m.player_home) ? m.player_home[0] : m.player_home;
-              const away = Array.isArray(m.player_away) ? m.player_away[0] : m.player_away;
-              const won = m.winner_id === profile.id;
-              const lost = m.winner_id !== null && m.winner_id !== profile.id;
-              return (
-                <Link
-                  key={m.id}
-                  href={m.tournament_id ? `/tournaments/${m.tournament_id}` : `/matches/${m.id}`}
-                  className="flex items-center justify-between rounded-lg border border-surface-200 bg-white p-3 hover:border-brand/30 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    {m.status === 'completed' && (
-                      <span className={`text-xs font-bold ${won ? 'text-accent' : lost ? 'text-red-500' : 'text-ink-muted'}`}>
-                        {won ? 'W' : lost ? 'L' : 'D'}
-                      </span>
-                    )}
-                    <span className="text-sm font-medium">
-                      {home?.username ?? 'TBD'} vs {away?.username ?? 'TBD'}
-                    </span>
-                    {m.status === 'completed' && (
-                      <span className="text-xs text-ink-muted">
-                        {m.score_home} - {m.score_away}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-ink-muted">{formatDate(m.scheduled_at)}</div>
-                </Link>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-lg border border-surface-200 bg-white p-8 text-center text-sm text-ink-muted">
-            No matches played yet. Join a tournament or create a 1v1 match to get started!
-          </div>
-        )}
-      </section>
-
-      {/* Tournament history */}
-      <section className="mt-8">
-        <h2 className="font-heading text-lg font-semibold">Tournament History</h2>
-        {tournaments.length > 0 ? (
-          <div className="mt-4 space-y-2">
-            {tournaments.map((t) => (
-              <Link
-                key={t.id}
-                href={`/tournaments/${t.id}`}
-                className="flex items-center justify-between rounded-lg border border-surface-200 bg-white p-3 hover:border-brand/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-semibold">{t.title}</h3>
-                  <TournamentStatusBadge status={t.status} />
-                  {t.winner_id === profile.id && (
-                    <span className="text-xs font-bold text-accent">🏆 Winner</span>
-                  )}
-                </div>
-                <div className="text-xs text-ink-muted">
-                  {t.mode} · {formatDate(t.starts_at)}
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-lg border border-surface-200 bg-white p-8 text-center text-sm text-ink-muted">
-            No tournaments yet. Browse upcoming tournaments to compete!
-          </div>
-        )}
-      </section>
+      <Suspense>
+      <ProfileTabs
+        profile={profile}
+        stats={detailedStats}
+        allMatches={allMatches ?? []}
+        recentMatches={(recentMatches ?? []).map((m) => ({
+          ...m,
+          player_home: Array.isArray(m.player_home) ? m.player_home[0] : m.player_home,
+          player_away: Array.isArray(m.player_away) ? m.player_away[0] : m.player_away,
+        }))}
+        tournaments={tournaments}
+        isOwnProfile={isOwnProfile}
+        currentUserId={user?.id ?? null}
+        psnCache={psnCache}
+      />
+      </Suspense>
     </div>
   );
 }

@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     scheduled_at: scheduled.toISOString(),
     slot_end_at: slotEnd.toISOString(),
     no_show_deadline: noShow.toISOString(),
+    rules_half_length_min: half_length,
     round: null,
     bracket_position: null,
     score_home: null,

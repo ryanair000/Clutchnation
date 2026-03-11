@@ -1,9 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { USERNAME_REGEX, PSN_ID_REGEX, COUNTRIES } from '@/lib/constants';
+import { PsnPreviewCard } from '@/components/shared/psn-preview-card';
+import type { NormalizedPsnProfile } from '@/types';
+
+const BIO_SUGGESTIONS = [
+  // Identity
+  'Gamer', 'Developer', 'Streamer', 'Content Creator', 'Pro Player',
+  'Casual Gamer', 'Competitive', 'Clan Leader', 'Team Captain',
+  // Games
+  'FC26 Player', 'FIFA Veteran', 'FPS Lover', 'RPG Fan', 'Battle Royale',
+  'Sports Games', 'Racing Fan', 'COD Player', 'GTA Enthusiast',
+  // Location / Culture
+  'From Nairobi', 'East Africa', 'Kenya', 'African Gaming', 'Mombasa',
+  // Personality / Vibes
+  'Clutch King', 'Never Give Up', 'GG Only', 'Tryhard', 'Grinder',
+  'Night Owl', 'Weekend Warrior', 'Chill Vibes', 'All Day Gaming',
+  // Platform
+  'PlayStation', 'PS5', 'PS4', 'Console Warrior',
+  // Esports
+  'Tournament Ready', 'Looking for Team', '1v1 Me', 'Ranked Grinder',
+  'Esports Fan', 'Trophy Hunter', 'Platinum Chaser', 'Online Pro',
+] as const;
+
+const VISIBLE_COUNT = 6;
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 interface OnboardingFormProps {
   userId: string;
@@ -18,6 +50,36 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
+
+  // PSN verification state
+  const [psnVerifyLoading, setPsnVerifyLoading] = useState(false);
+  const [psnProfile, setPsnProfile] = useState<NormalizedPsnProfile | null>(null);
+  const [psnVerifyError, setPsnVerifyError] = useState<string | null>(null);
+  const [psnNotFound, setPsnNotFound] = useState(false);
+  const [psnConfirmed, setPsnConfirmed] = useState(false);
+
+  // Bio suggestion chips
+  const [usedSuggestions, setUsedSuggestions] = useState<Set<string>>(new Set());
+  const pool = useMemo(
+    () => shuffleArray(BIO_SUGGESTIONS.filter((s) => !usedSuggestions.has(s))),
+    [usedSuggestions],
+  );
+  const visibleSuggestions = pool.slice(0, VISIBLE_COUNT);
+
+  const handleSuggestionClick = useCallback(
+    (tag: string) => {
+      setBio((prev) => {
+        const trimmed = prev.trim();
+        if (!trimmed) return tag;
+        // Avoid duplicates in bio text
+        if (trimmed.includes(tag)) return prev;
+        return `${trimmed} · ${tag}`;
+      });
+      setUsedSuggestions((prev) => new Set(prev).add(tag));
+    },
+    [],
+  );
+
   const router = useRouter();
 
   async function checkUnique(field: 'username' | 'psn_online_id', value: string) {
@@ -40,6 +102,43 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
       username: isUnique ? '' : 'Username is already taken',
     }));
     setCheckingUsername(false);
+  }
+
+  async function handlePsnVerify() {
+    if (!PSN_ID_REGEX.test(psnId)) return;
+    setPsnVerifyLoading(true);
+    setPsnVerifyError(null);
+    setPsnNotFound(false);
+    setPsnProfile(null);
+    setPsnConfirmed(false);
+
+    try {
+      const res = await fetch(`/api/psn/lookup/${encodeURIComponent(psnId)}`);
+      const data = await res.json();
+
+      if (res.status === 404 || data.reason === 'not_found') {
+        setPsnNotFound(true);
+      } else if (!res.ok || !data.found) {
+        setPsnVerifyError(data.error || 'Lookup failed');
+      } else {
+        setPsnProfile(data.data);
+      }
+    } catch {
+      setPsnVerifyError('Network error — you can still save without verifying');
+    } finally {
+      setPsnVerifyLoading(false);
+    }
+  }
+
+  function handlePsnConfirm() {
+    setPsnConfirmed(true);
+  }
+
+  function handlePsnCancel() {
+    setPsnProfile(null);
+    setPsnVerifyError(null);
+    setPsnNotFound(false);
+    setPsnConfirmed(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -94,6 +193,22 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
       return;
     }
 
+    // If user confirmed their PSN profile via lookup, link the account
+    if (psnConfirmed && psnProfile) {
+      try {
+        await fetch('/api/psn/link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountId: psnProfile.accountId,
+            onlineId: psnProfile.onlineId,
+          }),
+        });
+      } catch {
+        // Non-blocking — profile is saved, linking can happen later
+      }
+    }
+
     router.push('/dashboard');
     router.refresh();
   }
@@ -130,21 +245,62 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
         <label htmlFor="psn_id" className="block text-sm font-medium text-ink">
           PSN Online ID
         </label>
-        <input
-          id="psn_id"
-          type="text"
-          required
-          maxLength={16}
-          value={psnId}
-          onChange={(e) => setPsnId(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
-          placeholder="Your PlayStation ID"
-        />
+        <div className="mt-1 flex gap-2">
+          <input
+            id="psn_id"
+            type="text"
+            required
+            maxLength={16}
+            value={psnId}
+            onChange={(e) => {
+              setPsnId(e.target.value);
+              // Reset verification if user changes the ID
+              if (psnConfirmed) {
+                setPsnConfirmed(false);
+                setPsnProfile(null);
+              }
+            }}
+            className="block flex-1 rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
+            placeholder="Your PlayStation ID"
+          />
+          {!psnConfirmed && (
+            <button
+              type="button"
+              onClick={handlePsnVerify}
+              disabled={psnVerifyLoading || !PSN_ID_REGEX.test(psnId)}
+              className="rounded-lg bg-surface-100 px-3 py-2 text-xs font-medium text-ink hover:bg-surface-200 disabled:opacity-50 transition-colors"
+            >
+              {psnVerifyLoading ? 'Checking...' : 'Verify'}
+            </button>
+          )}
+        </div>
+        {psnConfirmed && psnProfile && (
+          <p className="mt-1 flex items-center gap-1 text-xs text-green-600">
+            <span>✓</span> Verified as {psnProfile.onlineId}
+            <button
+              type="button"
+              onClick={handlePsnCancel}
+              className="ml-1 text-ink-light underline"
+            >
+              Change
+            </button>
+          </p>
+        )}
+        {!psnConfirmed && (
+          <PsnPreviewCard
+            profile={psnProfile}
+            loading={psnVerifyLoading}
+            error={psnVerifyError}
+            notFound={psnNotFound}
+            onConfirm={handlePsnConfirm}
+            onCancel={handlePsnCancel}
+          />
+        )}
         {fieldErrors.psn_online_id && (
           <p className="mt-1 text-xs text-red-600">{fieldErrors.psn_online_id}</p>
         )}
         <p className="mt-1 text-xs text-ink-light">
-          Your PlayStation Network Online ID — exactly as it appears on PSN.
+          Your PlayStation Network Online ID — exactly as it appears on PSN. Tap &quot;Verify&quot; to confirm.
         </p>
       </div>
 
@@ -179,6 +335,19 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
           className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
           placeholder="FC26 enthusiast from Nairobi..."
         />
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {visibleSuggestions.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              disabled={bio.length + tag.length + 3 > 280}
+              onClick={() => handleSuggestionClick(tag)}
+              className="rounded-full border border-surface-300 bg-surface-50 px-2.5 py-1 text-xs font-medium text-ink-light hover:border-brand hover:text-brand disabled:opacity-30 transition-colors"
+            >
+              + {tag}
+            </button>
+          ))}
+        </div>
         <p className="mt-1 text-right text-xs text-ink-light">{bio.length}/280</p>
       </div>
 

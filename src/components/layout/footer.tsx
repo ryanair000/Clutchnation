@@ -22,6 +22,8 @@ export function Footer() {
             <nav className="mt-3 flex flex-col gap-2">
               <Link href="/tournaments" className="text-sm text-ink-muted hover:text-ink transition-colors">Tournaments</Link>
               <Link href="/leaderboards" className="text-sm text-ink-muted hover:text-ink transition-colors">Leaderboards</Link>
+              <Link href="/store" className="text-sm text-ink-muted hover:text-ink transition-colors">Store</Link>
+              <Link href="/streams" className="text-sm text-ink-muted hover:text-ink transition-colors">Streams</Link>
               <Link href="/signup" className="text-sm text-ink-muted hover:text-ink transition-colors">Sign Up</Link>
             </nav>
           </div>

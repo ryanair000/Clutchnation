@@ -40,7 +40,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protected pages — redirect guests to login
-  const protectedPrefixes = ['/dashboard', '/onboarding', '/settings', '/matches/create', '/tournaments/create', '/messages', '/admin'];
+  const protectedPrefixes = ['/dashboard', '/onboarding', '/settings', '/matches/create', '/tournaments/create', '/messages', '/admin', '/community'];
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p));
   if (!user && isProtected) {
     const url = request.nextUrl.clone();

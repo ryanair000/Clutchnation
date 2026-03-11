@@ -18,6 +18,12 @@ export interface Database {
           is_banned: boolean;
           psn_data: Record<string, unknown> | null;
           psn_data_fetched_at: string | null;
+          psn_account_id: string | null;
+          psn_verified_status: string;
+          psn_profile_url: string | null;
+          psn_sync_status: string;
+          psn_public_last_synced_at: string | null;
+          psn_last_lookup_error: string | null;
           stats_matches_played: number;
           stats_matches_won: number;
           stats_tournaments_played: number;
@@ -39,6 +45,12 @@ export interface Database {
           is_banned?: boolean;
           psn_data?: Record<string, unknown> | null;
           psn_data_fetched_at?: string | null;
+          psn_account_id?: string | null;
+          psn_verified_status?: string;
+          psn_profile_url?: string | null;
+          psn_sync_status?: string;
+          psn_public_last_synced_at?: string | null;
+          psn_last_lookup_error?: string | null;
           stats_matches_played?: number;
           stats_matches_won?: number;
           stats_tournaments_played?: number;
@@ -55,6 +67,12 @@ export interface Database {
           timezone?: string;
           psn_data?: Record<string, unknown> | null;
           psn_data_fetched_at?: string | null;
+          psn_account_id?: string | null;
+          psn_verified_status?: string;
+          psn_profile_url?: string | null;
+          psn_sync_status?: string;
+          psn_public_last_synced_at?: string | null;
+          psn_last_lookup_error?: string | null;
         };
       };
       tournaments: {
@@ -402,6 +420,148 @@ export interface Database {
         Update: {
           enabled?: boolean;
           metadata?: Record<string, unknown> | null;
+        };
+      };
+      psn_profile_cache: {
+        Row: {
+          psn_account_id: string;
+          online_id: string;
+          avatar_url: string | null;
+          about_me: string | null;
+          is_plus: boolean | null;
+          trophy_level: number | null;
+          trophy_progress: number | null;
+          trophy_counts: Record<string, unknown> | null;
+          presence: Record<string, unknown> | null;
+          current_title_name: string | null;
+          current_title_id: string | null;
+          current_platform: string | null;
+          fc26_last_played_at: string | null;
+          fc26_play_duration: string | null;
+          share_url: string | null;
+          fetched_at: string;
+        };
+        Insert: {
+          psn_account_id: string;
+          online_id: string;
+          avatar_url?: string | null;
+          about_me?: string | null;
+          is_plus?: boolean | null;
+          trophy_level?: number | null;
+          trophy_progress?: number | null;
+          trophy_counts?: Record<string, unknown> | null;
+          presence?: Record<string, unknown> | null;
+          current_title_name?: string | null;
+          current_title_id?: string | null;
+          current_platform?: string | null;
+          fc26_last_played_at?: string | null;
+          fc26_play_duration?: string | null;
+          share_url?: string | null;
+        };
+        Update: {
+          online_id?: string;
+          avatar_url?: string | null;
+          about_me?: string | null;
+          is_plus?: boolean | null;
+          trophy_level?: number | null;
+          trophy_progress?: number | null;
+          trophy_counts?: Record<string, unknown> | null;
+          presence?: Record<string, unknown> | null;
+          current_title_name?: string | null;
+          current_title_id?: string | null;
+          current_platform?: string | null;
+          fc26_last_played_at?: string | null;
+          fc26_play_duration?: string | null;
+          share_url?: string | null;
+          fetched_at?: string;
+        };
+      };
+      psn_link_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          psn_account_id: string | null;
+          event_type: string;
+          metadata: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          psn_account_id?: string | null;
+          event_type: string;
+          metadata?: Record<string, unknown> | null;
+        };
+        Update: Record<string, never>;
+      };
+      psn_service_tokens: {
+        Row: {
+          id: number;
+          refresh_token: string;
+          access_token: string | null;
+          access_token_expires_at: string | null;
+          refresh_token_expires_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          refresh_token: string;
+          access_token?: string | null;
+          access_token_expires_at?: string | null;
+          refresh_token_expires_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          refresh_token?: string;
+          access_token?: string | null;
+          access_token_expires_at?: string | null;
+          refresh_token_expires_at?: string | null;
+          updated_at?: string;
+        };
+      };
+      user_stream_channels: {
+        Row: {
+          id: string;
+          user_id: string;
+          platform: string;
+          channel_name: string;
+          channel_id: string | null;
+          channel_url: string;
+          is_live: boolean;
+          stream_title: string | null;
+          viewer_count: number;
+          thumbnail_url: string | null;
+          game_name: string | null;
+          started_at: string | null;
+          last_synced_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          platform: string;
+          channel_name: string;
+          channel_id?: string | null;
+          channel_url: string;
+          is_live?: boolean;
+          stream_title?: string | null;
+          viewer_count?: number;
+          thumbnail_url?: string | null;
+          game_name?: string | null;
+          started_at?: string | null;
+          last_synced_at?: string | null;
+        };
+        Update: {
+          channel_name?: string;
+          channel_id?: string | null;
+          channel_url?: string;
+          is_live?: boolean;
+          stream_title?: string | null;
+          viewer_count?: number;
+          thumbnail_url?: string | null;
+          game_name?: string | null;
+          started_at?: string | null;
+          last_synced_at?: string | null;
         };
       };
     };

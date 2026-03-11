@@ -15,10 +15,14 @@ export function MobileMenu({ isLoggedIn }: MobileMenuProps) {
   const navLinks = [
     { href: '/tournaments', label: 'Tournaments' },
     { href: '/leaderboards', label: 'Leaderboards' },
+    { href: '/store', label: 'Store' },
+    { href: '/streams', label: 'Streams' },
     ...(isLoggedIn
       ? [
           { href: '/dashboard', label: 'Dashboard' },
+          { href: '/community', label: 'Community' },
           { href: '/messages', label: 'Messages' },
+          { href: '/store/orders', label: 'My Orders' },
         ]
       : []),
   ];

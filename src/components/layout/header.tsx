@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { ShoppingCart } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { UserNav } from './user-nav';
 import { MobileMenu } from './mobile-menu';
+import { CartIconButton } from '@/components/store/cart-icon-button';
 
 export async function Header() {
   const supabase = await createClient();
@@ -38,10 +40,20 @@ export async function Header() {
           <Link href="/leaderboards" className="text-ink-muted hover:text-ink transition-colors">
             Leaderboards
           </Link>
+          <Link href="/store" className="text-ink-muted hover:text-ink transition-colors">
+            Store
+          </Link>
+          <Link href="/streams" className="text-ink-muted hover:text-ink transition-colors">
+            Streams
+          </Link>
+          <Link href="/community" className="text-ink-muted hover:text-ink transition-colors">
+            Community
+          </Link>
         </nav>
 
         {/* Right side */}
         <div className="flex items-center gap-3">
+          <CartIconButton />
           {isLoggedIn ? (
             <>
               <UserNav
