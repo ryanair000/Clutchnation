@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { STREAM_PLATFORM_LABELS } from '@/lib/constants';
 import type { StreamChannelWithProfile } from '@/types';
 
@@ -19,10 +20,12 @@ export function StreamCard({ stream }: StreamCardProps) {
       {/* Thumbnail */}
       <div className="relative aspect-video bg-surface-100">
         {stream.thumbnail_url ? (
-          <img
+          <Image
             src={stream.thumbnail_url}
             alt={stream.stream_title ?? `${username}'s stream`}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-ink-light text-sm">
@@ -61,9 +64,11 @@ export function StreamCard({ stream }: StreamCardProps) {
         </h3>
         <div className="mt-1 flex items-center gap-2">
           {profile?.avatar_url ? (
-            <img
+            <Image
               src={profile.avatar_url}
               alt={username}
+              width={20}
+              height={20}
               className="h-5 w-5 rounded-full object-cover"
             />
           ) : (

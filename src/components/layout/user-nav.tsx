@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -40,7 +41,7 @@ export function UserNav({ username, avatarUrl, isAdmin }: UserNavProps) {
         className="flex items-center gap-2 rounded-full border border-surface-200 p-1 pr-3 hover:bg-surface-50 transition-colors"
       >
         {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+          <Image src={avatarUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
         ) : (
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
             {getInitials(username)}

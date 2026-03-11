@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { SCORING_LABELS, PLATFORM_ICONS, type ScoringType } from '@/lib/constants';
 import type { PlatformType } from '@/types';
 
@@ -76,9 +77,11 @@ export function LeaderboardTable({ entries, scoringType = 'goals' }: { entries: 
                     className="flex items-center gap-2 hover:text-brand transition-colors"
                   >
                     {profile?.avatar_url ? (
-                      <img
+                      <Image
                         src={profile.avatar_url}
                         alt=""
+                        width={32}
+                        height={32}
                         className="h-8 w-8 rounded-full object-cover"
                       />
                     ) : (

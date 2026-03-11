@@ -1,8 +1,21 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Inter, Space_Grotesk } from 'next/font/google';
 import '@/styles/globals.css';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { CartProvider } from '@/components/store/cart-provider';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-space-grotesk',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -25,9 +38,19 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#2563EB',
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className={`h-full ${inter.variable} ${spaceGrotesk.variable}`}>
+      <head>
+        <link rel="dns-prefetch" href="https://beuxwonfnbnjwcjpsqfg.supabase.co" />
+        <link rel="preconnect" href="https://beuxwonfnbnjwcjpsqfg.supabase.co" />
+      </head>
       <body className="flex min-h-full flex-col bg-surface-50 font-body text-ink">
         <a
           href="#main-content"

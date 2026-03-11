@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getInitials } from '@/lib/utils';
 import { PlatformBadge } from '@/components/shared/platform-badge';
 import { PsnBadge } from '@/components/shared/psn-badge';
@@ -57,9 +58,11 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
       {/* Avatar */}
       <div className="relative">
         {avatarUrl ? (
-          <img
+          <Image
             src={avatarUrl}
             alt={profile.username ?? ''}
+            width={96}
+            height={96}
             className="h-24 w-24 rounded-full object-cover ring-4 ring-brand/20"
           />
         ) : (
