@@ -87,6 +87,7 @@ export interface Profile {
   stats_tournaments_won: number;
   stats_goals_for: number;
   stats_goals_against: number;
+  favorite_games: string[];
   created_at: string;
   updated_at: string;
 }
@@ -96,6 +97,7 @@ export interface ProfileFormData {
   psn_online_id: string;
   bio: string;
   country: string;
+  favorite_games: string[];
 }
 
 /** Tournament with participant count (used on list pages) */

@@ -120,6 +120,21 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
           <p className="mt-3 max-w-lg text-sm text-ink-muted">{profile.bio}</p>
         )}
 
+        {/* Favorite Games */}
+        {profile.favorite_games && profile.favorite_games.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-medium text-ink-light">🎮</span>
+            {profile.favorite_games.map((game) => (
+              <span
+                key={game}
+                className="rounded-full bg-surface-100 px-2 py-0.5 text-[11px] font-medium text-ink-muted"
+              >
+                {game}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Social actions (other users only) */}
         {!isOwnProfile && currentUserId && (
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">

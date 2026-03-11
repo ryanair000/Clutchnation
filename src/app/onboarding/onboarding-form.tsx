@@ -7,6 +7,17 @@ import { USERNAME_REGEX, PSN_ID_REGEX, COUNTRIES } from '@/lib/constants';
 import { PsnPreviewCard } from '@/components/shared/psn-preview-card';
 import type { NormalizedPsnProfile } from '@/types';
 
+const GAME_SUGGESTIONS = [
+  'EA SPORTS FC26', 'Ghost of Yōtei', "Marvel's Spider-Man 2", 'GTA VI',
+  'Call of Duty: Black Ops 6', 'NBA 2K26', 'Fortnite', 'Apex Legends',
+  'Valorant', 'Rocket League', 'Gran Turismo 7', 'WWE 2K25',
+  'Mortal Kombat 1', 'Street Fighter 6', 'Tekken 8', "Assassin's Creed Shadows",
+  'Elden Ring', 'God of War Ragnarök', 'The Last of Us Part II',
+  'Astro Bot', 'Horizon Forbidden West', 'Resident Evil 4',
+] as const;
+
+const VISIBLE_GAMES = 8;
+
 const BIO_SUGGESTIONS = [
   // Identity
   'Gamer', 'Developer', 'Streamer', 'Content Creator', 'Pro Player',
@@ -46,6 +57,8 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
   const [psnId, setPsnId] = useState('');
   const [country, setCountry] = useState('KE');
   const [bio, setBio] = useState('');
+  const [favoriteGames, setFavoriteGames] = useState<string[]>([]);
+  const [gameSearch, setGameSearch] = useState('');
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -65,6 +78,23 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
     [usedSuggestions],
   );
   const visibleSuggestions = pool.slice(0, VISIBLE_COUNT);
+
+  // Game suggestion logic — show unselected games, filtered by search
+  const gameSuggestions = useMemo(() => {
+    const unselected = GAME_SUGGESTIONS.filter((g) => !favoriteGames.includes(g));
+    if (gameSearch.trim()) {
+      const q = gameSearch.toLowerCase();
+      return unselected.filter((g) => g.toLowerCase().includes(q)).slice(0, VISIBLE_GAMES);
+    }
+    return shuffleArray(unselected).slice(0, VISIBLE_GAMES);
+  }, [favoriteGames, gameSearch]);
+
+  const toggleGame = useCallback((game: string) => {
+    setFavoriteGames((prev) =>
+      prev.includes(game) ? prev.filter((g) => g !== game) : [...prev, game]
+    );
+    setGameSearch('');
+  }, []);
 
   const handleSuggestionClick = useCallback(
     (tag: string) => {
@@ -184,6 +214,7 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
         psn_online_id: psnId,
         country,
         bio: bio || null,
+        favorite_games: favoriteGames,
       })
       .eq('id', userId);
 
@@ -349,6 +380,68 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
           ))}
         </div>
         <p className="mt-1 text-right text-xs text-ink-light">{bio.length}/280</p>
+      </div>
+
+      {/* Favorite Games */}
+      <div>
+        <label className="block text-sm font-medium text-ink">
+          Favorite Games <span className="text-ink-light">(optional)</span>
+        </label>
+
+        {/* Selected games */}
+        {favoriteGames.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {favoriteGames.map((game) => (
+              <button
+                key={game}
+                type="button"
+                onClick={() => toggleGame(game)}
+                className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand/20"
+              >
+                {game}
+                <span className="text-brand/60">✕</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Search / filter */}
+        <input
+          type="text"
+          value={gameSearch}
+          onChange={(e) => setGameSearch(e.target.value)}
+          className="mt-2 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
+          placeholder="Search games or pick below..."
+        />
+
+        {/* Suggestion chips — refresh on pick */}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {gameSuggestions.map((game) => (
+            <button
+              key={game}
+              type="button"
+              onClick={() => toggleGame(game)}
+              className="rounded-full border border-surface-300 bg-surface-50 px-2.5 py-1 text-xs font-medium text-ink-light hover:border-brand hover:text-brand transition-colors"
+            >
+              + {game}
+            </button>
+          ))}
+          {gameSuggestions.length === 0 && gameSearch.trim() && (
+            <button
+              type="button"
+              onClick={() => {
+                if (gameSearch.trim() && !favoriteGames.includes(gameSearch.trim())) {
+                  setFavoriteGames((prev) => [...prev, gameSearch.trim()]);
+                  setGameSearch('');
+                }
+              }}
+              className="rounded-full border border-brand bg-brand/5 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand/10 transition-colors"
+            >
+              + Add &quot;{gameSearch.trim()}&quot;
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-ink-light">Tap to add, tap again to remove. You can also type a custom game.</p>
       </div>
 
       <button

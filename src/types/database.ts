@@ -30,6 +30,7 @@ export interface Database {
           stats_tournaments_won: number;
           stats_goals_for: number;
           stats_goals_against: number;
+          favorite_games: string[];
           created_at: string;
           updated_at: string;
         };
@@ -57,6 +58,7 @@ export interface Database {
           stats_tournaments_won?: number;
           stats_goals_for?: number;
           stats_goals_against?: number;
+          favorite_games?: string[];
         };
         Update: {
           username?: string | null;
@@ -73,6 +75,7 @@ export interface Database {
           psn_sync_status?: string;
           psn_public_last_synced_at?: string | null;
           psn_last_lookup_error?: string | null;
+          favorite_games?: string[];
         };
       };
       tournaments: {
