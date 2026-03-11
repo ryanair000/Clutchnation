@@ -1,17 +1,76 @@
 /** Domain types derived from DB but used in components */
 
-// -- PSN Types --
+// -- Game --
 
-export type PsnVerifiedStatus =
+export interface Game {
+  id: string;
+  name: string;
+  slug: string;
+  modes: string[];
+  rules_schema: Record<string, { label: string; min: number; max: number; default: number; step: number }>;
+  is_active: boolean;
+  sort_order: number;
+}
+
+// -- Platform Types --
+
+export type PlatformType = 'psn' | 'steam' | 'xbox' | 'epic';
+
+export type PlatformVerifiedStatus =
   | 'none'
   | 'lookup_matched'
   | 'confirmed_by_user'
   | 'private_or_unavailable'
   | 'sync_failed';
 
-export type PsnSyncStatus = 'never' | 'ok' | 'stale' | 'error';
+export type PlatformSyncStatus = 'never' | 'ok' | 'stale' | 'error';
 
-export type PsnAvailability = 'public' | 'private_or_unavailable' | 'partial';
+export type PlatformAvailability = 'public' | 'private_or_unavailable' | 'partial';
+
+/** A linked platform account row from the platform_accounts table */
+export interface PlatformAccount {
+  id: string;
+  user_id: string;
+  platform: PlatformType;
+  platform_account_id: string;
+  platform_username: string;
+  verified_status: PlatformVerifiedStatus;
+  sync_status: PlatformSyncStatus;
+  profile_url: string | null;
+  last_synced_at: string | null;
+  last_lookup_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Normalized profile returned by any platform adapter's lookup/sync */
+export interface NormalizedPlatformProfile {
+  platform: PlatformType;
+  accountId: string;
+  username: string;
+  avatarUrl: string | null;
+  aboutMe: string | null;
+  shareUrl: string | null;
+  presence: {
+    state: 'online' | 'offline' | 'unknown';
+    platform: string | null;
+    titleName: string | null;
+    titleId: string | null;
+  } | null;
+  /** Platform-specific rich data (trophies for PSN, gamerscore for Xbox, hours for Steam, etc.) */
+  profileData: Record<string, unknown>;
+  availability: PlatformAvailability;
+  fetchedAt: string;
+}
+
+// -- PSN Types (kept for backward compat with existing PSN service) --
+
+/** @deprecated Use PlatformVerifiedStatus */
+export type PsnVerifiedStatus = PlatformVerifiedStatus;
+/** @deprecated Use PlatformSyncStatus */
+export type PsnSyncStatus = PlatformSyncStatus;
+/** @deprecated Use PlatformAvailability */
+export type PsnAvailability = PlatformAvailability;
 
 export interface NormalizedPsnProfile {
   accountId: string;
@@ -37,6 +96,7 @@ export interface NormalizedPsnProfile {
     fc26LastPlayedAt: string | null;
     fc26PlayDuration: string | null;
   } | null;
+  gameActivity: Record<string, { lastPlayedAt: string | null; playDuration: string | null }> | null;
   availability: PsnAvailability;
   fetchedAt: string;
 }
@@ -90,6 +150,8 @@ export interface Profile {
   favorite_games: string[];
   created_at: string;
   updated_at: string;
+  /** Linked platform accounts — joined from platform_accounts table */
+  platform_accounts?: PlatformAccount[];
 }
 
 export interface ProfileFormData {
@@ -98,6 +160,20 @@ export interface ProfileFormData {
   bio: string;
   country: string;
   favorite_games: string[];
+}
+
+/** Cached platform profile from platform_profile_cache table */
+export interface PlatformCacheRow {
+  id: string;
+  platform: PlatformType;
+  platform_account_id: string;
+  username: string | null;
+  avatar_url: string | null;
+  about_me: string | null;
+  profile_data: Record<string, unknown> | null;
+  presence: Record<string, unknown> | null;
+  share_url: string | null;
+  fetched_at: string;
 }
 
 /** Tournament with participant count (used on list pages) */
@@ -120,6 +196,7 @@ export interface TournamentWithCount {
 export interface CreateTournamentData {
   title: string;
   description: string;
+  game: string;
   mode: string;
   size: number;
   rules_half_length_min: number;
@@ -133,6 +210,7 @@ export interface LeaderboardEntry {
   user_id: string;
   season: string;
   mode: string;
+  game_id: string;
   matches_played: number;
   matches_won: number;
   win_rate: number;
@@ -149,6 +227,7 @@ export interface LeaderboardEntry {
     psn_online_id: string | null;
     psn_verified_status: PsnVerifiedStatus | null;
     country: string;
+    platform_accounts?: PlatformAccount[];
   } | null;
 }
 

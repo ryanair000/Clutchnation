@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext } from 'react';
-import type { PlayerDetailedStats } from '@/types';
+import type { PlayerDetailedStats, PlatformAccount } from '@/types';
 import type { Database } from '@/types/database';
 
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -52,6 +52,7 @@ export interface ProfileContextValue {
   isOwnProfile: boolean;
   currentUserId: string | null;
   psnCache: PsnCacheRow | null;
+  platformAccounts: PlatformAccount[];
 }
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);

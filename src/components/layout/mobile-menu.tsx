@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { InviteFriendModal } from '@/components/shared/invite-friend-modal';
 
 interface MobileMenuProps {
   isLoggedIn: boolean;
@@ -10,6 +11,7 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isLoggedIn }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const pathname = usePathname();
 
   const navLinks = [
@@ -23,6 +25,7 @@ export function MobileMenu({ isLoggedIn }: MobileMenuProps) {
           { href: '/community', label: 'Community' },
           { href: '/messages', label: 'Messages' },
           { href: '/store/orders', label: 'My Orders' },
+          { href: '#invite', label: 'Invite Friends' },
         ]
       : []),
   ];
@@ -54,7 +57,16 @@ export function MobileMenu({ isLoggedIn }: MobileMenuProps) {
           {/* Panel */}
           <nav className="fixed inset-x-0 top-16 z-50 border-b border-surface-200 bg-white shadow-lg">
             <div className="container-app divide-y divide-surface-100 py-2">
-              {navLinks.map((link) => (
+              {navLinks.map((link) =>
+                link.href === '#invite' ? (
+                  <button
+                    key="invite"
+                    onClick={() => { setOpen(false); setShowInvite(true); }}
+                    className="block w-full text-left px-2 py-3 text-sm font-medium text-accent hover:text-accent/80 transition-colors"
+                  >
+                    👋 {link.label}
+                  </button>
+                ) : (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -67,7 +79,8 @@ export function MobileMenu({ isLoggedIn }: MobileMenuProps) {
                 >
                   {link.label}
                 </Link>
-              ))}
+                )
+              )}
 
               {!isLoggedIn && (
                 <div className="flex gap-3 px-2 py-3">
@@ -91,6 +104,8 @@ export function MobileMenu({ isLoggedIn }: MobileMenuProps) {
           </nav>
         </>
       )}
+
+      {showInvite && <InviteFriendModal onClose={() => setShowInvite(false)} />}
     </div>
   );
 }

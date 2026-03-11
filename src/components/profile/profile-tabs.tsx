@@ -16,7 +16,7 @@ import { PlayerStatsPanel } from '@/components/shared/player-stats-panel';
 import { ReportUserButton } from '@/components/shared/report-user-button';
 import { TournamentStatusBadge } from '@/components/tournaments/status-badge';
 import { formatDate } from '@/lib/utils';
-import type { PlayerDetailedStats } from '@/types';
+import type { PlayerDetailedStats, PlatformAccount } from '@/types';
 
 /* ------------------------------------------------------------------ */
 /*  Tab definitions                                                    */
@@ -26,7 +26,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'matches', label: 'Match History' },
   { id: 'tournaments', label: 'Tournaments' },
-  { id: 'psn', label: 'PSN Profile' },
+  { id: 'platforms', label: 'Platforms' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -44,6 +44,7 @@ interface ProfileTabsProps {
   isOwnProfile: boolean;
   currentUserId: string | null;
   psnCache: PsnCacheRow | null;
+  platformAccounts?: PlatformAccount[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -51,14 +52,8 @@ interface ProfileTabsProps {
 /* ------------------------------------------------------------------ */
 
 export function ProfileTabs({
-  profile,
-  stats,
-  allMatches,
-  recentMatches,
-  tournaments,
-  isOwnProfile,
-  currentUserId,
-  psnCache,
+  profile, stats, allMatches, recentMatches, tournaments,
+  isOwnProfile, currentUserId, psnCache, platformAccounts = [],
 }: ProfileTabsProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -93,6 +88,7 @@ export function ProfileTabs({
         isOwnProfile,
         currentUserId,
         psnCache,
+        platformAccounts,
       }}
     >
       {/* Header — always visible */}
@@ -138,7 +134,7 @@ export function ProfileTabs({
         )}
         {activeTab === 'matches' && <MatchHistoryPlaceholder />}
         {activeTab === 'tournaments' && <TournamentsPlaceholder />}
-        {activeTab === 'psn' && <PsnPlaceholder />}
+        {activeTab === 'platforms' && <PlatformsPanel platformAccounts={platformAccounts} />}
       </div>
     </ProfileProvider>
   );
@@ -288,12 +284,43 @@ function TournamentsPlaceholder() {
   );
 }
 
-function PsnPlaceholder() {
+function PlatformsPanel({ platformAccounts }: { platformAccounts: PlatformAccount[] }) {
+  if (platformAccounts.length === 0) {
+    return (
+      <div className="rounded-lg border border-surface-200 bg-white p-12 text-center">
+        <p className="text-ink-muted text-sm">No gaming platforms linked yet.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-lg border border-surface-200 bg-white p-12 text-center">
-      <p className="text-ink-muted text-sm">
-        Full PSN profile details coming soon.
-      </p>
+    <div className="space-y-3">
+      {platformAccounts.map((account) => (
+        <div
+          key={account.id}
+          className="flex items-center justify-between rounded-lg border border-surface-200 bg-white p-4"
+        >
+          <div>
+            <p className="text-sm font-semibold text-ink">{account.platform.toUpperCase()}</p>
+            <p className="mt-0.5 text-sm text-ink-light">{account.platform_username}</p>
+            {account.verified_status === 'confirmed_by_user' && (
+              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                ✓ Verified
+              </span>
+            )}
+          </div>
+          {account.profile_url && (
+            <a
+              href={account.profile_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-brand hover:text-brand-600 transition-colors"
+            >
+              View Profile →
+            </a>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

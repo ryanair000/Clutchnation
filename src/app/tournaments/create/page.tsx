@@ -25,7 +25,7 @@ export default async function CreateTournamentPage() {
     <div className="container-app py-8">
       <h1 className="font-heading text-2xl font-bold">Host a Tournament</h1>
       <p className="mt-1 text-sm text-ink-muted">
-        Set up an FC26 tournament for the community.
+        Set up a tournament for the community.
       </p>
       <div className="mt-6 max-w-lg">
         <CreateTournamentForm />

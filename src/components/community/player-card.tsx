@@ -1,5 +1,12 @@
 import Link from 'next/link';
 import { getInitials } from '@/lib/utils';
+import { PLATFORM_ICONS } from '@/lib/constants';
+import type { PlatformType } from '@/types';
+
+interface PlatformAccountSubset {
+  platform: string;
+  platform_username: string;
+}
 
 interface PlayerCardProps {
   player: {
@@ -14,6 +21,7 @@ interface PlayerCardProps {
     win_rate: number;
     rank: number | null;
     points: number | null;
+    platform_accounts?: PlatformAccountSubset[];
   };
 }
 
@@ -39,11 +47,19 @@ export function PlayerCard({ player }: PlayerCardProps) {
           )}
         </div>
 
-        {player.psn_online_id && (
+        {player.platform_accounts && player.platform_accounts.length > 0 ? (
+          <p className="mt-0.5 text-xs text-ink-light">
+            {player.platform_accounts.map((a) => (
+              <span key={a.platform} className="mr-2">
+                {PLATFORM_ICONS[a.platform as PlatformType] ?? '🎮'} {a.platform_username}
+              </span>
+            ))}
+          </p>
+        ) : player.psn_online_id ? (
           <p className="mt-0.5 text-xs text-ink-light">
             🎮 {player.psn_online_id}
           </p>
-        )}
+        ) : null}
 
         {player.bio && (
           <p className="mt-1 line-clamp-2 text-xs text-ink-muted">

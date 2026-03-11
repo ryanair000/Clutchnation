@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { StatsGrid } from '@/components/shared/stats-grid';
 import { TournamentStatusBadge } from '@/components/tournaments/status-badge';
 import { formatDate, formatTime, formatDateTime } from '@/lib/utils';
+import { InviteButton } from '@/components/shared/invite-button';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
@@ -106,6 +107,7 @@ export default async function DashboardPage() {
           >
             1v1 Challenge
           </Link>
+          <InviteButton />
         </div>
       </div>
 

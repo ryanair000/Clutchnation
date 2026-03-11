@@ -61,6 +61,7 @@ export async function getCachedProfile(
       fc26LastPlayedAt: data.fc26_last_played_at,
       fc26PlayDuration: data.fc26_play_duration,
     },
+    gameActivity: data.game_activity as Record<string, { lastPlayedAt: string | null; playDuration: string | null }> | null,
     availability: 'public',
     fetchedAt: data.fetched_at,
   };
@@ -95,6 +96,7 @@ export async function setCachedProfile(
       current_platform: profile.presence?.platform ?? null,
       fc26_last_played_at: profile.recentActivity?.fc26LastPlayedAt ?? null,
       fc26_play_duration: profile.recentActivity?.fc26PlayDuration ?? null,
+      game_activity: profile.gameActivity as unknown as Record<string, unknown> | null,
       share_url: profile.shareUrl,
       fetched_at: profile.fetchedAt,
     },

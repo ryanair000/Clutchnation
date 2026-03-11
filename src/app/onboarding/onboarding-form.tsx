@@ -3,9 +3,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { USERNAME_REGEX, PSN_ID_REGEX, COUNTRIES } from '@/lib/constants';
-import { PsnPreviewCard } from '@/components/shared/psn-preview-card';
-import type { NormalizedPsnProfile } from '@/types';
+import { USERNAME_REGEX, PSN_ID_REGEX, COUNTRIES, PLATFORMS, PLATFORM_LABELS, PLATFORM_ICONS, PLATFORM_ID_REGEX, PLATFORM_ID_PLACEHOLDERS, PLATFORM_HAS_LOOKUP } from '@/lib/constants';
+import { PlatformPreviewCard } from '@/components/shared/platform-preview-card';
+import type { PlatformType, NormalizedPlatformProfile } from '@/types';
 
 const GAME_SUGGESTIONS = [
   'EA SPORTS FC26', 'Ghost of Yōtei', "Marvel's Spider-Man 2", 'GTA VI',
@@ -54,7 +54,6 @@ interface OnboardingFormProps {
 
 export function OnboardingForm({ userId }: OnboardingFormProps) {
   const [username, setUsername] = useState('');
-  const [psnId, setPsnId] = useState('');
   const [country, setCountry] = useState('KE');
   const [bio, setBio] = useState('');
   const [favoriteGames, setFavoriteGames] = useState<string[]>([]);
@@ -64,12 +63,14 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
   const [loading, setLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
 
-  // PSN verification state
-  const [psnVerifyLoading, setPsnVerifyLoading] = useState(false);
-  const [psnProfile, setPsnProfile] = useState<NormalizedPsnProfile | null>(null);
-  const [psnVerifyError, setPsnVerifyError] = useState<string | null>(null);
-  const [psnNotFound, setPsnNotFound] = useState(false);
-  const [psnConfirmed, setPsnConfirmed] = useState(false);
+  // Platform linking state
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>('psn');
+  const [platformId, setPlatformId] = useState('');
+  const [platformVerifyLoading, setPlatformVerifyLoading] = useState(false);
+  const [platformProfile, setPlatformProfile] = useState<NormalizedPlatformProfile | null>(null);
+  const [platformVerifyError, setPlatformVerifyError] = useState<string | null>(null);
+  const [platformNotFound, setPlatformNotFound] = useState(false);
+  const [platformConfirmed, setPlatformConfirmed] = useState(false);
 
   // Bio suggestion chips
   const [usedSuggestions, setUsedSuggestions] = useState<Set<string>>(new Set());
@@ -112,7 +113,7 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
 
   const router = useRouter();
 
-  async function checkUnique(field: 'username' | 'psn_online_id', value: string) {
+  async function checkUnique(field: 'username', value: string) {
     const supabase = createClient();
     const { data } = await supabase
       .from('profiles')
@@ -134,41 +135,60 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
     setCheckingUsername(false);
   }
 
-  async function handlePsnVerify() {
-    if (!PSN_ID_REGEX.test(psnId)) return;
-    setPsnVerifyLoading(true);
-    setPsnVerifyError(null);
-    setPsnNotFound(false);
-    setPsnProfile(null);
-    setPsnConfirmed(false);
+  async function handlePlatformVerify() {
+    const regex = PLATFORM_ID_REGEX[selectedPlatform];
+    if (!regex.test(platformId)) return;
+    setPlatformVerifyLoading(true);
+    setPlatformVerifyError(null);
+    setPlatformNotFound(false);
+    setPlatformProfile(null);
+    setPlatformConfirmed(false);
+
+    if (!PLATFORM_HAS_LOOKUP[selectedPlatform]) {
+      // Manual entry platforms
+      setPlatformProfile({
+        platform: selectedPlatform,
+        accountId: platformId.toLowerCase(),
+        username: platformId,
+        avatarUrl: null,
+        aboutMe: null,
+        shareUrl: null,
+        presence: null,
+        profileData: {},
+        availability: 'public',
+        fetchedAt: new Date().toISOString(),
+      });
+      setPlatformVerifyLoading(false);
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/psn/lookup/${encodeURIComponent(psnId)}`);
+      const res = await fetch(`/api/platforms/${selectedPlatform}/lookup/${encodeURIComponent(platformId)}`);
       const data = await res.json();
 
       if (res.status === 404 || data.reason === 'not_found') {
-        setPsnNotFound(true);
+        setPlatformNotFound(true);
       } else if (!res.ok || !data.found) {
-        setPsnVerifyError(data.error || 'Lookup failed');
+        setPlatformVerifyError(data.error || 'Lookup failed');
       } else {
-        setPsnProfile(data.data);
+        setPlatformProfile(data.data);
       }
     } catch {
-      setPsnVerifyError('Network error — you can still save without verifying');
+      setPlatformVerifyError('Network error — you can still save without verifying');
     } finally {
-      setPsnVerifyLoading(false);
+      setPlatformVerifyLoading(false);
     }
   }
 
-  function handlePsnConfirm() {
-    setPsnConfirmed(true);
+  function handlePlatformConfirm() {
+    setPlatformConfirmed(true);
   }
 
-  function handlePsnCancel() {
-    setPsnProfile(null);
-    setPsnVerifyError(null);
-    setPsnNotFound(false);
-    setPsnConfirmed(false);
+  function handlePlatformCancel() {
+    setPlatformProfile(null);
+    setPlatformVerifyError(null);
+    setPlatformNotFound(false);
+    setPlatformConfirmed(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -181,9 +201,6 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
     if (!USERNAME_REGEX.test(username)) {
       errors.username = 'Username must be 3-20 characters (letters, numbers, underscores)';
     }
-    if (!PSN_ID_REGEX.test(psnId)) {
-      errors.psn_online_id = 'PSN ID must start with a letter, 3-16 characters';
-    }
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -192,13 +209,8 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
     setLoading(true);
 
     // Check uniqueness
-    const [usernameUnique, psnUnique] = await Promise.all([
-      checkUnique('username', username),
-      checkUnique('psn_online_id', psnId),
-    ]);
-
+    const usernameUnique = await checkUnique('username', username);
     if (!usernameUnique) errors.username = 'Username is already taken';
-    if (!psnUnique) errors.psn_online_id = 'PSN ID is already registered';
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -211,7 +223,6 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
       .from('profiles')
       .update({
         username,
-        psn_online_id: psnId,
         country,
         bio: bio || null,
         favorite_games: favoriteGames,
@@ -224,15 +235,15 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
       return;
     }
 
-    // If user confirmed their PSN profile via lookup, link the account
-    if (psnConfirmed && psnProfile) {
+    // If user confirmed a platform profile, link the account via new API
+    if (platformConfirmed && platformProfile) {
       try {
-        await fetch('/api/psn/link', {
+        await fetch(`/api/platforms/${platformProfile.platform}/link`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            accountId: psnProfile.accountId,
-            onlineId: psnProfile.onlineId,
+            accountId: platformProfile.accountId,
+            username: platformProfile.username,
           }),
         });
       } catch {
@@ -273,66 +284,100 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
       </div>
 
       <div>
-        <label htmlFor="psn_id" className="block text-sm font-medium text-ink">
-          PSN Online ID
+        <label className="block text-sm font-medium text-ink">
+          Gaming Platform <span className="text-ink-light">(optional)</span>
         </label>
-        <div className="mt-1 flex gap-2">
+        <p className="mt-1 text-xs text-ink-light">
+          Link a gaming account to add trust to your profile. You can add more later in settings.
+        </p>
+
+        {/* Platform selector */}
+        <div className="mt-2 flex flex-wrap gap-2">
+          {PLATFORMS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => {
+                setSelectedPlatform(p);
+                setPlatformId('');
+                handlePlatformCancel();
+              }}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                selectedPlatform === p
+                  ? 'bg-brand text-white'
+                  : 'border border-surface-300 bg-surface-50 text-ink-light hover:border-brand hover:text-brand'
+              }`}
+            >
+              {PLATFORM_ICONS[p]} {PLATFORM_LABELS[p]}
+            </button>
+          ))}
+        </div>
+
+        {/* Platform ID input */}
+        <div className="mt-3 flex gap-2">
           <input
-            id="psn_id"
             type="text"
-            required
-            maxLength={16}
-            value={psnId}
+            maxLength={32}
+            value={platformId}
             onChange={(e) => {
-              setPsnId(e.target.value);
-              // Reset verification if user changes the ID
-              if (psnConfirmed) {
-                setPsnConfirmed(false);
-                setPsnProfile(null);
+              setPlatformId(e.target.value);
+              if (platformConfirmed) {
+                setPlatformConfirmed(false);
+                setPlatformProfile(null);
               }
             }}
             className="block flex-1 rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
-            placeholder="Your PlayStation ID"
+            placeholder={PLATFORM_ID_PLACEHOLDERS[selectedPlatform]}
           />
-          {!psnConfirmed && (
+          {!platformConfirmed && (
             <button
               type="button"
-              onClick={handlePsnVerify}
-              disabled={psnVerifyLoading || !PSN_ID_REGEX.test(psnId)}
+              onClick={handlePlatformVerify}
+              disabled={platformVerifyLoading || !PLATFORM_ID_REGEX[selectedPlatform].test(platformId)}
               className="rounded-lg bg-surface-100 px-3 py-2 text-xs font-medium text-ink hover:bg-surface-200 disabled:opacity-50 transition-colors"
             >
-              {psnVerifyLoading ? 'Checking...' : 'Verify'}
+              {platformVerifyLoading ? 'Checking...' : PLATFORM_HAS_LOOKUP[selectedPlatform] ? 'Verify' : 'Add'}
             </button>
           )}
         </div>
-        {psnConfirmed && psnProfile && (
+        {platformConfirmed && platformProfile && (
           <p className="mt-1 flex items-center gap-1 text-xs text-green-600">
-            <span>✓</span> Verified as {psnProfile.onlineId}
+            <span>✓</span> Verified as {platformProfile.username} on {PLATFORM_LABELS[selectedPlatform]}
             <button
               type="button"
-              onClick={handlePsnCancel}
+              onClick={handlePlatformCancel}
               className="ml-1 text-ink-light underline"
             >
               Change
             </button>
           </p>
         )}
-        {!psnConfirmed && (
-          <PsnPreviewCard
-            profile={psnProfile}
-            loading={psnVerifyLoading}
-            error={psnVerifyError}
-            notFound={psnNotFound}
-            onConfirm={handlePsnConfirm}
-            onCancel={handlePsnCancel}
+        {!platformConfirmed && PLATFORM_HAS_LOOKUP[selectedPlatform] && (
+          <PlatformPreviewCard
+            platform={selectedPlatform}
+            profile={platformProfile}
+            loading={platformVerifyLoading}
+            error={platformVerifyError}
+            notFound={platformNotFound}
+            onConfirm={handlePlatformConfirm}
+            onCancel={handlePlatformCancel}
           />
         )}
-        {fieldErrors.psn_online_id && (
-          <p className="mt-1 text-xs text-red-600">{fieldErrors.psn_online_id}</p>
+        {!platformConfirmed && !PLATFORM_HAS_LOOKUP[selectedPlatform] && platformProfile && (
+          <div className="mt-3 rounded-xl border border-brand/20 bg-gradient-to-b from-brand/5 to-transparent p-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{PLATFORM_ICONS[selectedPlatform]}</span>
+              <p className="font-bold text-ink">{platformProfile.username}</p>
+            </div>
+            <p className="mt-1 text-xs text-ink-light">
+              Manual entry — no online verification available for {PLATFORM_LABELS[selectedPlatform]}.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <button type="button" onClick={handlePlatformConfirm} className="rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">Confirm</button>
+              <button type="button" onClick={handlePlatformCancel} className="rounded-lg border border-surface-300 px-4 py-2 text-xs font-medium text-ink-light transition-colors hover:bg-surface-100">Cancel</button>
+            </div>
+          </div>
         )}
-        <p className="mt-1 text-xs text-ink-light">
-          Your PlayStation Network Online ID — exactly as it appears on PSN. Tap &quot;Verify&quot; to confirm.
-        </p>
       </div>
 
       <div>
@@ -364,7 +409,7 @@ export function OnboardingForm({ userId }: OnboardingFormProps) {
           value={bio}
           onChange={(e) => setBio(e.target.value)}
           className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
-          placeholder="FC26 enthusiast from Nairobi..."
+          placeholder="Competitive gamer from Nairobi..."
         />
         <div className="mt-2 flex flex-wrap gap-1.5">
           {visibleSuggestions.map((tag) => (

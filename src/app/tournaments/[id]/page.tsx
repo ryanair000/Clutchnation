@@ -95,7 +95,9 @@ export default async function TournamentDetailPage({ params }: Props) {
             <span>🎮 {tournament.mode}</span>
             <span>👥 {participantCount}/{tournament.size}</span>
             <span>📅 {formatDate(tournament.starts_at)} at {formatTime(tournament.starts_at)}</span>
-            <span>⏱️ {tournament.rules_half_length_min}-min halves</span>
+            {tournament.rules_half_length_min && (
+              <span>⏱️ {tournament.rules_half_length_min}-min halves</span>
+            )}
           </div>
           <p className="mt-2 text-xs text-ink-light">
             Hosted by {host?.username ?? 'Unknown'}

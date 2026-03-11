@@ -6,21 +6,21 @@ import { CartProvider } from '@/components/store/cart-provider';
 
 export const metadata: Metadata = {
   title: {
-    default: 'ClutchNation — FC26 Tournaments & Matches',
+    default: 'ClutchNation — Tournaments & Matches',
     template: '%s | ClutchNation',
   },
-  description: 'Host and join FC26 tournaments and 1v1 matches for PlayStation gamers in Kenya. Compete, climb leaderboards, and prove you\'re the best.',
-  keywords: ['FC26', 'FIFA', 'tournament', 'PlayStation', 'Kenya', 'esports', 'gaming', 'competitive'],
+  description: 'Host and join tournaments and 1v1 matches for PlayStation gamers in Kenya. Compete, climb leaderboards, and prove you\'re the best.',
+  keywords: ['tournament', 'PlayStation', 'Kenya', 'esports', 'gaming', 'competitive', 'FC26', 'NBA2K', 'COD'],
   openGraph: {
     type: 'website',
-    title: 'ClutchNation — FC26 Tournaments & Matches',
-    description: 'Host and join FC26 tournaments and 1v1 matches for PlayStation gamers in Kenya.',
+    title: 'ClutchNation — Tournaments & Matches',
+    description: 'Host and join tournaments and 1v1 matches for PlayStation gamers in Kenya.',
     siteName: 'ClutchNation',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ClutchNation — FC26 Tournaments & Matches',
-    description: 'Host and join FC26 tournaments and 1v1 matches for PlayStation gamers in Kenya.',
+    title: 'ClutchNation — Tournaments & Matches',
+    description: 'Host and join tournaments and 1v1 matches for PlayStation gamers in Kenya.',
   },
   robots: { index: true, follow: true },
 };

@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { USERNAME_REGEX, PSN_ID_REGEX, COUNTRIES, MAX_AVATAR_SIZE_MB } from '@/lib/constants';
+import { USERNAME_REGEX, COUNTRIES, MAX_AVATAR_SIZE_MB } from '@/lib/constants';
 import { getInitials } from '@/lib/utils';
 import type { Database } from '@/types/database';
 
@@ -35,7 +35,6 @@ interface EditProfileFormProps {
 
 export function EditProfileForm({ profile }: EditProfileFormProps) {
   const [username, setUsername] = useState(profile.username ?? '');
-  const [psnId, setPsnId] = useState(profile.psn_online_id ?? '');
   const [bio, setBio] = useState(profile.bio ?? '');
   const [country, setCountry] = useState(profile.country);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
@@ -116,11 +115,6 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
       setLoading(false);
       return;
     }
-    if (!PSN_ID_REGEX.test(psnId)) {
-      setError('PSN ID must start with a letter, 3-16 characters');
-      setLoading(false);
-      return;
-    }
 
     const supabase = createClient();
 
@@ -138,25 +132,11 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
         return;
       }
     }
-    if (psnId !== profile.psn_online_id) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('psn_online_id', psnId)
-        .neq('id', profile.id)
-        .maybeSingle();
-      if (data) {
-        setError('PSN ID is already registered');
-        setLoading(false);
-        return;
-      }
-    }
 
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
         username,
-        psn_online_id: psnId,
         bio: bio || null,
         country,
         favorite_games: favoriteGames,
@@ -221,19 +201,6 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
           maxLength={20}
           value={username}
           onChange={(e) => setUsername(e.target.value.replace(/\s/g, '_'))}
-          className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="psn_id" className="block text-sm font-medium text-ink">PSN Online ID</label>
-        <input
-          id="psn_id"
-          type="text"
-          required
-          maxLength={16}
-          value={psnId}
-          onChange={(e) => setPsnId(e.target.value)}
           className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
         />
       </div>

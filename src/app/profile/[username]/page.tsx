@@ -2,9 +2,11 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { ProfileTabs } from '@/components/profile/profile-tabs';
 import { computePlayerStats } from '@/lib/stats';
 import { CURRENT_SEASON } from '@/lib/constants';
+import type { PlatformAccount } from '@/types';
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -94,6 +96,14 @@ export default async function ProfilePage({ params }: Props) {
     psnCache = data;
   }
 
+  // Fetch platform accounts
+  const serviceClient = createServiceClient();
+  const { data: platformAccountsRaw } = await serviceClient
+    .from('platform_accounts')
+    .select('*')
+    .eq('user_id', profile.id);
+  const platformAccounts = (platformAccountsRaw ?? []) as PlatformAccount[];
+
   // Compute stats
   const detailedStats = computePlayerStats(
     profile.id,
@@ -119,6 +129,7 @@ export default async function ProfilePage({ params }: Props) {
         isOwnProfile={isOwnProfile}
         currentUserId={user?.id ?? null}
         psnCache={psnCache}
+        platformAccounts={platformAccounts}
       />
       </Suspense>
     </div>

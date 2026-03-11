@@ -1,4 +1,11 @@
 import Link from 'next/link';
+import { SCORING_LABELS, PLATFORM_ICONS, type ScoringType } from '@/lib/constants';
+import type { PlatformType } from '@/types';
+
+interface PlatformAccountSubset {
+  platform: string;
+  platform_username: string;
+}
 
 interface Entry {
   id: string;
@@ -16,6 +23,7 @@ interface Entry {
     | { username: string | null; avatar_url: string | null; psn_online_id: string | null; country: string }
     | { username: string | null; avatar_url: string | null; psn_online_id: string | null; country: string }[]
     | null;
+  platform_accounts?: PlatformAccountSubset[];
 }
 
 function getRankBadge(rank: number): string {
@@ -25,7 +33,9 @@ function getRankBadge(rank: number): string {
   return `#${rank}`;
 }
 
-export function LeaderboardTable({ entries }: { entries: Entry[] }) {
+export function LeaderboardTable({ entries, scoringType = 'goals' }: { entries: Entry[]; scoringType?: string }) {
+  const labels = SCORING_LABELS[(scoringType as ScoringType) ?? 'goals'] ?? SCORING_LABELS.goals;
+
   return (
     <div className="mt-6 overflow-x-auto">
       <table className="w-full text-sm">
@@ -37,9 +47,9 @@ export function LeaderboardTable({ entries }: { entries: Entry[] }) {
             <th className="px-3 py-3 text-center hidden sm:table-cell">P</th>
             <th className="px-3 py-3 text-center hidden sm:table-cell">W</th>
             <th className="px-3 py-3 text-center hidden md:table-cell">Win%</th>
-            <th className="px-3 py-3 text-center hidden md:table-cell">GF</th>
-            <th className="px-3 py-3 text-center hidden md:table-cell">GA</th>
-            <th className="px-3 py-3 text-center hidden lg:table-cell">GD</th>
+            <th className="px-3 py-3 text-center hidden md:table-cell" title={labels.for}>SF</th>
+            <th className="px-3 py-3 text-center hidden md:table-cell" title={labels.against}>SA</th>
+            <th className="px-3 py-3 text-center hidden lg:table-cell" title={labels.diff}>SD</th>
             <th className="px-3 py-3 text-center hidden lg:table-cell">🏆</th>
           </tr>
         </thead>
@@ -80,11 +90,19 @@ export function LeaderboardTable({ entries }: { entries: Entry[] }) {
                       <p className="font-semibold">
                         {profile?.username ?? 'Unknown'}
                       </p>
-                      {profile?.psn_online_id && (
+                      {entry.platform_accounts && entry.platform_accounts.length > 0 ? (
+                        <p className="text-xs text-ink-light">
+                          {entry.platform_accounts.map((a) => (
+                            <span key={a.platform} className="mr-2">
+                              {PLATFORM_ICONS[a.platform as PlatformType] ?? '🎮'} {a.platform_username}
+                            </span>
+                          ))}
+                        </p>
+                      ) : profile?.psn_online_id ? (
                         <p className="text-xs text-ink-light">
                           {profile.psn_online_id}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </Link>
                 </td>

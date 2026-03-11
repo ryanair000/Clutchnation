@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { POINTS, CURRENT_SEASON, MODES } from '@/lib/constants';
+import { POINTS, CURRENT_SEASON, MODES, DEFAULT_GAME_ID } from '@/lib/constants';
 
 /**
  * POST /api/leaderboards/compute
- * Computes leaderboard snapshots for all players in the current season.
+ * Computes leaderboard snapshots for all players in the current season, per game.
  * Protected by a simple bearer token (CRON_SECRET env var).
  */
 export async function POST(request: Request) {
@@ -40,10 +40,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 });
   }
 
-  // Fetch all completed matches
+  // Fetch all active games
+  const { data: activeGames } = await supabase
+    .from('games')
+    .select('id, modes')
+    .eq('is_active', true);
+
+  const gameIds = (activeGames ?? []).map((g) => g.id);
+  const gameModesMap = new Map<string, string[]>();
+  for (const g of activeGames ?? []) {
+    const modes = Array.isArray(g.modes) ? g.modes as string[] : JSON.parse(g.modes as unknown as string);
+    gameModesMap.set(g.id, modes);
+  }
+
+  // Fetch all completed matches (now with game_id)
   const { data: allMatches, error: matchesErr } = await supabase
     .from('matches')
-    .select('id, match_type, player_home_id, player_away_id, score_home, score_away, winner_id, status, mode:tournaments(mode)')
+    .select('id, match_type, game_id, player_home_id, player_away_id, score_home, score_away, winner_id, status, mode:tournaments(mode, game)')
     .eq('status', 'completed');
 
   if (matchesErr) {
@@ -53,7 +66,7 @@ export async function POST(request: Request) {
   // Fetch tournament winners for bonus points
   const { data: tournaments } = await supabase
     .from('tournaments')
-    .select('id, winner_id, mode')
+    .select('id, winner_id, mode, game')
     .eq('status', 'completed');
 
   // Fetch tournament participations
@@ -61,9 +74,9 @@ export async function POST(request: Request) {
     .from('tournament_participants')
     .select('user_id, tournament_id');
 
-  const tournMap = new Map<string, { winner_id: string | null; mode: string }>();
+  const tournMap = new Map<string, { winner_id: string | null; mode: string; game: string }>();
   for (const t of tournaments ?? []) {
-    tournMap.set(t.id, { winner_id: t.winner_id, mode: t.mode });
+    tournMap.set(t.id, { winner_id: t.winner_id, mode: t.mode, game: t.game });
   }
 
   // Group participations by user
@@ -73,12 +86,12 @@ export async function POST(request: Request) {
     userTournaments.get(p.user_id)!.add(p.tournament_id);
   }
 
-  // Compute snapshots for each mode + "all"
-  const modes = ['all', ...MODES];
+  // Compute snapshots per game, per mode
   const snapshots: {
     user_id: string;
     season: string;
     mode: string;
+    game_id: string;
     matches_played: number;
     matches_won: number;
     win_rate: number;
@@ -89,92 +102,107 @@ export async function POST(request: Request) {
     points: number;
   }[] = [];
 
-  for (const profile of profiles) {
-    const uid = profile.id;
+  for (const gameId of gameIds) {
+    const gameModes = gameModesMap.get(gameId) ?? ['1v1'];
+    const modes = ['all', ...gameModes];
 
+    for (const profile of profiles) {
+      const uid = profile.id;
+
+      for (const mode of modes) {
+        // Filter matches for this user, game, and mode
+        const userMatches = (allMatches ?? []).filter((m: any) => {
+          const isPlayer = m.player_home_id === uid || m.player_away_id === uid;
+          if (!isPlayer) return false;
+
+          // Match game: standalone matches use game_id, tournament matches inherit from tournament
+          const matchGameId = m.game_id ?? DEFAULT_GAME_ID;
+          if (matchGameId !== gameId) return false;
+
+          if (mode === 'all') return true;
+          // For standalone matches, assume first mode of game
+          if (m.match_type === 'standalone') return mode === gameModes[0];
+          // For tournament matches, check the tournament mode
+          const tournData = Array.isArray(m.mode) ? m.mode[0] : m.mode;
+          return tournData?.mode === mode;
+        });
+
+        if (userMatches.length === 0 && mode !== 'all') continue;
+
+        let matchesWon = 0;
+        let goalsFor = 0;
+        let goalsAgainst = 0;
+        let draws = 0;
+
+        for (const m of userMatches) {
+          const isHome = m.player_home_id === uid;
+          goalsFor += isHome ? (m.score_home ?? 0) : (m.score_away ?? 0);
+          goalsAgainst += isHome ? (m.score_away ?? 0) : (m.score_home ?? 0);
+          if (m.winner_id === uid) matchesWon++;
+          else if (m.winner_id === null) draws++;
+        }
+
+        // Tournament stats for this mode and game
+        const userTids = userTournaments.get(uid) ?? new Set<string>();
+        let tournsWon = 0;
+        let tournsPlayed = 0;
+        for (const tid of userTids) {
+          const t = tournMap.get(tid);
+          if (!t) continue;
+          if (t.game !== gameId) continue;
+          if (mode !== 'all' && t.mode !== mode) continue;
+          tournsPlayed++;
+          if (t.winner_id === uid) tournsWon++;
+        }
+
+        // Calculate points
+        let points = matchesWon * POINTS.MATCH_WIN + draws * POINTS.MATCH_DRAW;
+        points += tournsWon * POINTS.TOURNAMENT_WIN;
+        points += (tournsPlayed - tournsWon) * POINTS.TOURNAMENT_PARTICIPATION;
+
+        const winRate = userMatches.length > 0 ? matchesWon / userMatches.length : 0;
+
+        snapshots.push({
+          user_id: uid,
+          season,
+          mode,
+          game_id: gameId,
+          matches_played: userMatches.length,
+          matches_won: matchesWon,
+          win_rate: Math.round(winRate * 10000) / 10000,
+          goals_for: goalsFor,
+          goals_against: goalsAgainst,
+          goal_diff: goalsFor - goalsAgainst,
+          tournaments_won: tournsWon,
+          points,
+        });
+      }
+    }
+  }
+
+  // Sort each game+mode group by points DESC and assign ranks
+  for (const gameId of gameIds) {
+    const gameModes = gameModesMap.get(gameId) ?? ['1v1'];
+    const modes = ['all', ...gameModes];
     for (const mode of modes) {
-      // Filter matches for this user and mode
-      const userMatches = (allMatches ?? []).filter((m: any) => {
-        const isPlayer = m.player_home_id === uid || m.player_away_id === uid;
-        if (!isPlayer) return false;
-        if (mode === 'all') return true;
-        // For standalone matches, assume 1v1
-        if (m.match_type === 'standalone') return mode === '1v1';
-        // For tournament matches, check the tournament mode
-        const tournMode = Array.isArray(m.mode) ? m.mode[0]?.mode : (m.mode as { mode?: string })?.mode;
-        return tournMode === mode;
-      });
+      const modeSnapshots = snapshots
+        .filter((s) => s.game_id === gameId && s.mode === mode)
+        .sort((a, b) => b.points - a.points || b.goal_diff - a.goal_diff || b.matches_won - a.matches_won);
 
-      if (userMatches.length === 0 && mode !== 'all') continue;
-
-      let matchesWon = 0;
-      let goalsFor = 0;
-      let goalsAgainst = 0;
-      let draws = 0;
-
-      for (const m of userMatches) {
-        const isHome = m.player_home_id === uid;
-        goalsFor += isHome ? (m.score_home ?? 0) : (m.score_away ?? 0);
-        goalsAgainst += isHome ? (m.score_away ?? 0) : (m.score_home ?? 0);
-        if (m.winner_id === uid) matchesWon++;
-        else if (m.winner_id === null) draws++;
+      let rank = 1;
+      for (const s of modeSnapshots) {
+        (s as any).rank = rank++;
       }
-
-      // Tournament stats for this mode
-      const userTids = userTournaments.get(uid) ?? new Set<string>();
-      let tournsWon = 0;
-      let tournsPlayed = 0;
-      for (const tid of userTids) {
-        const t = tournMap.get(tid);
-        if (!t) continue;
-        if (mode !== 'all' && t.mode !== mode) continue;
-        tournsPlayed++;
-        if (t.winner_id === uid) tournsWon++;
-      }
-
-      // Calculate points
-      const losses = userMatches.length - matchesWon - draws;
-      let points = matchesWon * POINTS.MATCH_WIN + draws * POINTS.MATCH_DRAW;
-      points += tournsWon * POINTS.TOURNAMENT_WIN;
-      points += (tournsPlayed - tournsWon) * POINTS.TOURNAMENT_PARTICIPATION;
-
-      const winRate = userMatches.length > 0 ? matchesWon / userMatches.length : 0;
-
-      snapshots.push({
-        user_id: uid,
-        season,
-        mode,
-        matches_played: userMatches.length,
-        matches_won: matchesWon,
-        win_rate: Math.round(winRate * 10000) / 10000,
-        goals_for: goalsFor,
-        goals_against: goalsAgainst,
-        goal_diff: goalsFor - goalsAgainst,
-        tournaments_won: tournsWon,
-        points,
-      });
     }
   }
 
-  // Sort each mode group by points DESC and assign ranks
-  for (const mode of modes) {
-    const modeSnapshots = snapshots
-      .filter((s) => s.mode === mode)
-      .sort((a, b) => b.points - a.points || b.goal_diff - a.goal_diff || b.matches_won - a.matches_won);
-
-    let rank = 1;
-    for (const s of modeSnapshots) {
-      (s as any).rank = rank++;
-    }
-  }
-
-  // Upsert snapshots (avoids delete+insert race condition)
+  // Upsert snapshots (new unique key: user_id, season, mode, game_id)
   if (snapshots.length > 0) {
     for (let i = 0; i < snapshots.length; i += 500) {
       const chunk = snapshots.slice(i, i + 500);
       const { error: upsertErr } = await supabase
         .from('leaderboard_snapshots')
-        .upsert(chunk as any[], { onConflict: 'user_id,season,mode' });
+        .upsert(chunk as any[], { onConflict: 'user_id,season,mode,game_id' });
       if (upsertErr) {
         return NextResponse.json({ error: upsertErr.message }, { status: 500 });
       }
@@ -184,6 +212,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     success: true,
     season,
+    gamesProcessed: gameIds.length,
     playersProcessed: profiles.length,
     snapshotsCreated: snapshots.length,
   });

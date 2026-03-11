@@ -12,7 +12,7 @@ export function Footer() {
               <span className="text-ink">Nation</span>
             </p>
             <p className="mt-2 text-sm text-ink-muted">
-              FC26 tournaments &amp; matches for PlayStation gamers in Kenya.
+              Tournaments &amp; matches for PlayStation gamers in Kenya.
             </p>
           </div>
 

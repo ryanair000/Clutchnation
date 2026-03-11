@@ -1,22 +1,79 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { MODES, TOURNAMENT_SIZES, HALF_LENGTH_MIN } from '@/lib/constants';
+import { TOURNAMENT_SIZES, DEFAULT_GAME_ID } from '@/lib/constants';
+import type { Game } from '@/types';
 
 export function CreateTournamentForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [games, setGames] = useState<Game[]>([]);
+  const [gameId, setGameId] = useState<string>(DEFAULT_GAME_ID);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [mode, setMode] = useState<string>(MODES[0]);
+  const [mode, setMode] = useState<string>('1v1');
   const [size, setSize] = useState<number>(8);
-  const [halfLength, setHalfLength] = useState(HALF_LENGTH_MIN);
+  const [ruleValues, setRuleValues] = useState<Record<string, number>>({});
   const [startsAt, setStartsAt] = useState('');
   const [regCloses, setRegCloses] = useState('');
+
+  // Fetch available games
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from('games')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }) => {
+        if (data) {
+          setGames(data as unknown as Game[]);
+          // Initialize rules from default game
+          const defaultGame = data.find((g) => g.id === DEFAULT_GAME_ID);
+          if (defaultGame) {
+            const schema = defaultGame.rules_schema as Record<string, any>;
+            const defaults: Record<string, number> = {};
+            for (const [key, val] of Object.entries(schema)) {
+              defaults[key] = val.default;
+            }
+            setRuleValues(defaults);
+          }
+        }
+      });
+  }, []);
+
+  const selectedGame = useMemo(() => games.find((g) => g.id === gameId), [games, gameId]);
+  const gameModes = useMemo(() => {
+    if (!selectedGame) return ['1v1'];
+    const modes = selectedGame.modes;
+    return Array.isArray(modes) ? modes as string[] : JSON.parse(modes as unknown as string);
+  }, [selectedGame]);
+
+  const rulesSchema = useMemo(() => {
+    if (!selectedGame) return {};
+    const schema = selectedGame.rules_schema;
+    return typeof schema === 'object' ? schema : {};
+  }, [selectedGame]);
+
+  // When game changes, reset mode and rules to defaults
+  function handleGameChange(newGameId: string) {
+    setGameId(newGameId);
+    const game = games.find((g) => g.id === newGameId);
+    if (game) {
+      const modes = Array.isArray(game.modes) ? game.modes as string[] : JSON.parse(game.modes as unknown as string);
+      setMode(modes[0] || '1v1');
+      const schema = game.rules_schema as Record<string, any>;
+      const defaults: Record<string, number> = {};
+      for (const [key, val] of Object.entries(schema)) {
+        defaults[key] = val.default;
+      }
+      setRuleValues(defaults);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,12 +108,16 @@ export function CreateTournamentForm() {
       return;
     }
 
+    // For FC26, pass rules_half_length_min; for others, use the first rule value
+    const halfLength = ruleValues['half_length_min'] ?? 6;
+
     const { data, error: insertError } = await supabase
       .from('tournaments')
       .insert({
         host_id: user.id,
         title: title.trim(),
         description: description.trim() || null,
+        game: gameId,
         mode,
         size,
         rules_half_length_min: halfLength,
@@ -89,6 +150,24 @@ export function CreateTournamentForm() {
       )}
 
       <div>
+        <label htmlFor="game" className="block text-sm font-medium text-ink">
+          Game
+        </label>
+        <select
+          id="game"
+          value={gameId}
+          onChange={(e) => handleGameChange(e.target.value)}
+          className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
+        >
+          {games.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <label htmlFor="title" className="block text-sm font-medium text-ink">
           Tournament Name
         </label>
@@ -100,7 +179,7 @@ export function CreateTournamentForm() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
-          placeholder="Nairobi FC26 Weekend Cup"
+          placeholder={selectedGame ? `${selectedGame.name} Weekend Cup` : 'Weekend Cup'}
         />
       </div>
 
@@ -130,9 +209,9 @@ export function CreateTournamentForm() {
             onChange={(e) => setMode(e.target.value)}
             className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
           >
-            {MODES.map((m) => (
+            {gameModes.map((m: string) => (
               <option key={m} value={m}>
-                {m}
+                {m.replace(/_/g, ' ')}
               </option>
             ))}
           </select>
@@ -157,20 +236,23 @@ export function CreateTournamentForm() {
         </div>
       </div>
 
-      <div>
-        <label htmlFor="halfLength" className="block text-sm font-medium text-ink">
-          Half Length (minutes)
-        </label>
-        <input
-          id="halfLength"
-          type="number"
-          min={4}
-          max={20}
-          value={halfLength}
-          onChange={(e) => setHalfLength(Number(e.target.value))}
-          className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
-        />
-      </div>
+      {/* Dynamic rules based on game */}
+      {Object.entries(rulesSchema).map(([key, rule]: [string, any]) => (
+        <div key={key}>
+          <label htmlFor={key} className="block text-sm font-medium text-ink">
+            {rule.label}
+          </label>
+          <input
+            id={key}
+            type="number"
+            min={rule.min}
+            max={rule.max}
+            value={ruleValues[key] ?? rule.default}
+            onChange={(e) => setRuleValues((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
+            className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:ring-brand"
+          />
+        </div>
+      ))}
 
       <div className="grid grid-cols-2 gap-4">
         <div>

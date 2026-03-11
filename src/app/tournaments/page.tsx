@@ -30,7 +30,7 @@ export default async function TournamentsPage() {
         <div>
           <h1 className="font-heading text-2xl font-bold">Tournaments</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Browse and join FC26 tournaments
+            Browse and join tournaments
           </p>
         </div>
         {user && (

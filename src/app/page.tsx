@@ -10,13 +10,13 @@ import { FeaturesGrid } from '@/components/home/features-grid';
 import { TournamentStatusBadge } from '@/components/tournaments/status-badge';
 
 export const metadata: Metadata = {
-  title: 'ClutchNation — Competitive FC26 on PlayStation in Kenya',
+  title: 'ClutchNation — Competitive PlayStation Gaming in Kenya',
   description:
-    'Host and join FC26 tournaments, challenge rivals to 1v1 matches, and climb the leaderboard. The home of competitive PlayStation gaming in Kenya.',
+    'Host and join tournaments, challenge rivals to 1v1 matches, and climb the leaderboard. The home of competitive PlayStation gaming in Kenya.',
   openGraph: {
-    title: 'ClutchNation — Competitive FC26 on PlayStation in Kenya',
+    title: 'ClutchNation — Competitive PlayStation Gaming in Kenya',
     description:
-      'Host and join FC26 tournaments, challenge rivals to 1v1 matches, and climb the leaderboard.',
+      'Host and join tournaments, challenge rivals to 1v1 matches, and climb the leaderboard.',
   },
 };
 
@@ -137,7 +137,7 @@ export default async function HomePage() {
     {
       icon: <Globe className="h-5 w-5" />,
       title: 'Built for Kenya',
-      desc: 'East Africa timezone, local community focus. Designed for the Kenyan FC26 PlayStation scene.',
+      desc: 'East Africa timezone, local community focus. Designed for the Kenyan PlayStation gaming scene.',
     },
   ];
 
@@ -156,7 +156,7 @@ export default async function HomePage() {
               <span className="text-ink">Nation</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-muted sm:text-xl">
-              The home of competitive FC26 on PlayStation in Kenya. Host tournaments,
+              The home of competitive PlayStation gaming in Kenya. Host tournaments,
               challenge rivals, climb the leaderboard, and prove you&apos;re the best.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">

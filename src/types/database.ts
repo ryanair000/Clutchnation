@@ -5,6 +5,47 @@
 export interface Database {
   public: {
     Tables: {
+      games: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          icon_url: string | null;
+          platform: string;
+          is_active: boolean;
+          modes: string[];
+          scoring_type: string;
+          rules_schema: Record<string, unknown>;
+          psn_title_names: string[];
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          slug: string;
+          icon_url?: string | null;
+          platform?: string;
+          is_active?: boolean;
+          modes?: string[];
+          scoring_type?: string;
+          rules_schema?: Record<string, unknown>;
+          psn_title_names?: string[];
+          sort_order?: number;
+        };
+        Update: {
+          name?: string;
+          slug?: string;
+          icon_url?: string | null;
+          platform?: string;
+          is_active?: boolean;
+          modes?: string[];
+          scoring_type?: string;
+          rules_schema?: Record<string, unknown>;
+          psn_title_names?: string[];
+          sort_order?: number;
+        };
+      };
       profiles: {
         Row: {
           id: string;
@@ -158,6 +199,7 @@ export interface Database {
           id: string;
           match_type: string;
           tournament_id: string | null;
+          game_id: string;
           round: number | null;
           bracket_position: number | null;
           player_home_id: string | null;
@@ -184,6 +226,7 @@ export interface Database {
           id?: string;
           match_type: string;
           tournament_id?: string | null;
+          game_id?: string;
           round?: number | null;
           bracket_position?: number | null;
           player_home_id?: string | null;
@@ -198,6 +241,7 @@ export interface Database {
         };
         Update: {
           status?: string;
+          game_id?: string;
           score_home?: number | null;
           score_away?: number | null;
           home_reported_score_home?: number | null;
@@ -349,6 +393,7 @@ export interface Database {
           user_id: string;
           season: string;
           mode: string;
+          game_id: string;
           matches_played: number;
           matches_won: number;
           win_rate: number;
@@ -365,6 +410,7 @@ export interface Database {
           user_id: string;
           season: string;
           mode: string;
+          game_id?: string;
           matches_played?: number;
           matches_won?: number;
           win_rate?: number;
@@ -441,6 +487,7 @@ export interface Database {
           current_platform: string | null;
           fc26_last_played_at: string | null;
           fc26_play_duration: string | null;
+          game_activity: Record<string, { last_played_at: string | null; play_duration: string | null }> | null;
           share_url: string | null;
           fetched_at: string;
         };
@@ -459,6 +506,7 @@ export interface Database {
           current_platform?: string | null;
           fc26_last_played_at?: string | null;
           fc26_play_duration?: string | null;
+          game_activity?: Record<string, unknown> | null;
           share_url?: string | null;
         };
         Update: {
@@ -475,6 +523,7 @@ export interface Database {
           current_platform?: string | null;
           fc26_last_played_at?: string | null;
           fc26_play_duration?: string | null;
+          game_activity?: Record<string, unknown> | null;
           share_url?: string | null;
           fetched_at?: string;
         };
@@ -566,6 +615,100 @@ export interface Database {
           started_at?: string | null;
           last_synced_at?: string | null;
         };
+      };
+      platform_accounts: {
+        Row: {
+          id: string;
+          user_id: string;
+          platform: string;
+          platform_account_id: string;
+          platform_username: string;
+          verified_status: string;
+          sync_status: string;
+          profile_url: string | null;
+          last_synced_at: string | null;
+          last_lookup_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          platform: string;
+          platform_account_id: string;
+          platform_username: string;
+          verified_status?: string;
+          sync_status?: string;
+          profile_url?: string | null;
+          last_synced_at?: string | null;
+          last_lookup_error?: string | null;
+        };
+        Update: {
+          platform_account_id?: string;
+          platform_username?: string;
+          verified_status?: string;
+          sync_status?: string;
+          profile_url?: string | null;
+          last_synced_at?: string | null;
+          last_lookup_error?: string | null;
+        };
+      };
+      platform_profile_cache: {
+        Row: {
+          id: string;
+          platform: string;
+          platform_account_id: string;
+          username: string;
+          avatar_url: string | null;
+          about_me: string | null;
+          share_url: string | null;
+          presence: Record<string, unknown> | null;
+          profile_data: Record<string, unknown> | null;
+          availability: string;
+          fetched_at: string;
+        };
+        Insert: {
+          id?: string;
+          platform: string;
+          platform_account_id: string;
+          username: string;
+          avatar_url?: string | null;
+          about_me?: string | null;
+          share_url?: string | null;
+          presence?: Record<string, unknown> | null;
+          profile_data?: Record<string, unknown> | null;
+          availability?: string;
+        };
+        Update: {
+          username?: string;
+          avatar_url?: string | null;
+          about_me?: string | null;
+          share_url?: string | null;
+          presence?: Record<string, unknown> | null;
+          profile_data?: Record<string, unknown> | null;
+          availability?: string;
+          fetched_at?: string;
+        };
+      };
+      platform_link_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          platform: string;
+          platform_account_id: string | null;
+          event_type: string;
+          metadata: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          platform: string;
+          platform_account_id?: string | null;
+          event_type: string;
+          metadata?: Record<string, unknown> | null;
+        };
+        Update: Record<string, never>;
       };
     };
     Views: Record<string, never>;

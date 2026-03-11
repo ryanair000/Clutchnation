@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getInitials } from '@/lib/utils';
+import { InviteButton } from '@/components/shared/invite-button';
 
 interface UserNavProps {
   username: string;
@@ -85,6 +86,7 @@ export function UserNav({ username, avatarUrl, isAdmin }: UserNavProps) {
           >
             My Orders
           </Link>
+          <InviteButton variant="nav" />
           {isAdmin && (
             <Link
               href="/admin"

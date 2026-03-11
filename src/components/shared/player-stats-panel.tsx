@@ -54,16 +54,16 @@ export function PlayerStatsPanel({ stats }: { stats: PlayerDetailedStats }) {
           label="Win Rate"
           value={`${(stats.winRate * 100).toFixed(1)}%`}
         />
-        <StatCard label="Goals For" value={stats.goalsFor} />
-        <StatCard label="Goals Against" value={stats.goalsAgainst} />
+        <StatCard label="Score For" value={stats.goalsFor} />
+        <StatCard label="Score Against" value={stats.goalsAgainst} />
         <StatCard
-          label="Goal Diff"
+          label="Score Diff"
           value={`${stats.goalDiff > 0 ? '+' : ''}${stats.goalDiff}`}
           accent={stats.goalDiff > 0}
           negative={stats.goalDiff < 0}
         />
         <StatCard
-          label="Avg Goals/Match"
+          label="Avg Score/Match"
           value={stats.avgGoalsPerMatch.toFixed(1)}
         />
         <StatCard label="Clean Sheets" value={stats.cleanSheets} />

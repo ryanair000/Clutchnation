@@ -1,10 +1,83 @@
 export const APP_NAME = 'ClutchNation';
-export const APP_DESCRIPTION = 'FC26 tournaments & matches for PlayStation gamers in Kenya';
+export const APP_DESCRIPTION = 'Tournaments & matches for gamers in Kenya';
 
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const GAME = 'FC26' as const;
+export const DEFAULT_GAME_ID = 'fc26' as const;
+
+/** Scoring type determines UI labels (Goals, Points, Kills, Rounds) */
+export type ScoringType = 'goals' | 'points' | 'kills' | 'rounds';
+
+export const SCORING_LABELS: Record<ScoringType, { for: string; against: string; diff: string; avg: string }> = {
+  goals:  { for: 'Goals For', against: 'Goals Against', diff: 'Goal Diff', avg: 'Avg Goals/Match' },
+  points: { for: 'Points For', against: 'Points Against', diff: 'Point Diff', avg: 'Avg Pts/Match' },
+  kills:  { for: 'Kills', against: 'Deaths', diff: 'K/D Diff', avg: 'Avg Kills/Match' },
+  rounds: { for: 'Rounds Won', against: 'Rounds Lost', diff: 'Round Diff', avg: 'Avg Rounds/Match' },
+};
+
+// -- Platform constants --
+
+import type { PlatformType } from '@/types';
+
+export const PLATFORMS: readonly PlatformType[] = ['psn', 'steam', 'xbox', 'epic'] as const;
+
+export const PLATFORM_LABELS: Record<PlatformType, string> = {
+  psn: 'PlayStation Network',
+  steam: 'Steam',
+  xbox: 'Xbox',
+  epic: 'Epic Games',
+};
+
+export const PLATFORM_ICONS: Record<PlatformType, string> = {
+  psn: '🎮',
+  steam: '🎯',
+  xbox: '🟢',
+  epic: '🏔️',
+};
+
+export const PLATFORM_ID_REGEX: Record<PlatformType, RegExp> = {
+  psn: /^[a-zA-Z][a-zA-Z0-9_-]{2,15}$/,
+  steam: /^[a-zA-Z0-9_-]{2,32}$/,
+  xbox: /^[a-zA-Z][a-zA-Z0-9 ]{0,14}$/,
+  epic: /^[a-zA-Z0-9._-]{3,32}$/,
+};
+
+export const PLATFORM_ID_LABELS: Record<PlatformType, string> = {
+  psn: 'PSN Online ID',
+  steam: 'Steam Username or Vanity URL',
+  xbox: 'Xbox Gamertag',
+  epic: 'Epic Display Name',
+};
+
+export const PLATFORM_ID_PLACEHOLDERS: Record<PlatformType, string> = {
+  psn: 'Enter PSN Online ID',
+  steam: 'Enter Steam username',
+  xbox: 'Enter Xbox Gamertag',
+  epic: 'Enter Epic display name',
+};
+
+export const PLATFORM_PROFILE_URL_TEMPLATES: Record<PlatformType, (username: string) => string> = {
+  psn: (u) => `https://psnprofiles.com/${encodeURIComponent(u)}`,
+  steam: (u) => `https://steamcommunity.com/id/${encodeURIComponent(u)}`,
+  xbox: (u) => `https://www.xbox.com/en-US/play/user/${encodeURIComponent(u)}`,
+  epic: (u) => `https://store.epicgames.com/u/${encodeURIComponent(u)}`,
+};
+
+/** Which platforms support server-side lookup (vs manual entry only) */
+export const PLATFORM_HAS_LOOKUP: Record<PlatformType, boolean> = {
+  psn: true,
+  steam: true,
+  xbox: true,
+  epic: false,
+};
+
+export const PLATFORM_FEATURE_FLAGS: Record<PlatformType, string> = {
+  psn: 'psn_lookup_enabled',
+  steam: 'steam_lookup_enabled',
+  xbox: 'xbox_lookup_enabled',
+  epic: 'epic_lookup_enabled',
+};
 
 export const MODES = ['1v1', '2v2', 'pro_clubs'] as const;
 export type GameMode = (typeof MODES)[number];
@@ -69,6 +142,9 @@ export const POINTS = {
 
 export const LEADERBOARD_MODES = ['all', '1v1', '2v2', 'pro_clubs'] as const;
 export type LeaderboardMode = (typeof LEADERBOARD_MODES)[number];
+
+export const LEADERBOARD_GAMES = ['all', 'fc26', 'nba2k26', 'madden26', 'cod_bo6', 'tekken8', 'sf6', 'gt7', 'rocketleague'] as const;
+export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number];
 
 // -- Community --
 

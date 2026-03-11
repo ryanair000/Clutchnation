@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { getInitials } from '@/lib/utils';
+import { PlatformBadge } from '@/components/shared/platform-badge';
 import { PsnBadge } from '@/components/shared/psn-badge';
 import { useProfile } from '@/components/profile/profile-context';
 import type { Database } from '@/types/database';
@@ -27,7 +28,7 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
-  const { psnCache, currentUserId } = useProfile();
+  const { psnCache, currentUserId, platformAccounts } = useProfile();
   const [copied, setCopied] = useState(false);
 
   const presence = psnCache?.presence as
@@ -81,12 +82,28 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
 
         {/* Badges row */}
         <div className="mt-1 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-          <PsnBadge
-            psnOnlineId={profile.psn_online_id}
-            verifiedStatus={profile.psn_verified_status as PsnVerifiedStatus}
-            profileUrl={profile.psn_profile_url}
-            size="sm"
-          />
+          {/* Multi-platform badges */}
+          {platformAccounts.length > 0
+            ? platformAccounts.map((account) => (
+                <PlatformBadge
+                  key={account.id}
+                  platform={account.platform}
+                  username={account.platform_username}
+                  verifiedStatus={account.verified_status}
+                  profileUrl={account.profile_url}
+                  size="sm"
+                />
+              ))
+            : (
+              /* Fallback to legacy PSN badge if no platform_accounts yet */
+              <PsnBadge
+                psnOnlineId={profile.psn_online_id}
+                verifiedStatus={profile.psn_verified_status as PsnVerifiedStatus}
+                profileUrl={profile.psn_profile_url}
+                size="sm"
+              />
+            )
+          }
           {psnCache?.is_plus && (
             <span className="shrink-0 rounded-full bg-yellow-400/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-yellow-700">
               PS+
@@ -105,8 +122,21 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
           </p>
         )}
 
-        {/* FC 26 activity badge */}
-        {psnCache?.fc26_last_played_at && (
+        {/* Game activity badges */}
+        {psnCache?.game_activity && typeof psnCache.game_activity === 'object' && (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {Object.entries(psnCache.game_activity as Record<string, { lastPlayedAt?: string | null }>).map(([gameId, info]) =>
+              info?.lastPlayedAt ? (
+                <span key={gameId} className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
+                  🎮 Active on {gameId.toUpperCase()}
+                  <span className="text-accent/60">· {formatRelativeTime(info.lastPlayedAt)}</span>
+                </span>
+              ) : null,
+            )}
+          </div>
+        )}
+        {/* Legacy FC 26 badge (fallback if game_activity not yet populated) */}
+        {!psnCache?.game_activity && psnCache?.fc26_last_played_at && (
           <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
             ⚽ Active on FC 26
             <span className="text-accent/60">

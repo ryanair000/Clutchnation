@@ -50,6 +50,7 @@ export function normalizePsnProfile(
   trophies?: RawTrophyData | null,
   presence?: RawPresenceData | null,
   recentGames?: RawRecentGame[] | null,
+  trackedTitleNames?: Record<string, string[]> | null,
 ): NormalizedPsnProfile {
   let availability: PsnAvailability = 'public';
   let fieldsPresent = 0;
@@ -89,21 +90,38 @@ export function normalizePsnProfile(
     }
   }
 
-  // Resolve FC 26 recent activity
+  // Build game activity map from recent games
+  // Keys are lowercased title names matched against known tracked titles
+  const gameActivity: Record<string, { lastPlayedAt: string | null; playDuration: string | null }> = {};
+
+  // Resolve FC 26 recent activity (kept for backwards compatibility)
   let fc26LastPlayedAt: string | null = null;
   let fc26PlayDuration: string | null = null;
 
   if (recentGames) {
-    const fc26Game = recentGames.find(
-      (g) =>
-        g.name &&
-        FC26_TITLE_NAMES.some((t) =>
-          g.name!.toLowerCase().includes(t.toLowerCase()),
-        ),
-    );
-    if (fc26Game) {
-      fc26LastPlayedAt = fc26Game.lastPlayedDateTime ?? null;
-      fc26PlayDuration = fc26Game.playDuration ?? null;
+    for (const g of recentGames) {
+      if (!g.name) continue;
+      const nameLower = g.name.toLowerCase();
+
+      // FC 26
+      if (FC26_TITLE_NAMES.some((t) => nameLower.includes(t.toLowerCase()))) {
+        fc26LastPlayedAt = g.lastPlayedDateTime ?? null;
+        fc26PlayDuration = g.playDuration ?? null;
+        gameActivity['fc26'] = { lastPlayedAt: fc26LastPlayedAt, playDuration: fc26PlayDuration };
+      }
+
+      // Store any game with a recognizable name in the activity map
+      // Additional title-name mappings can be loaded from the games table at call-site
+      if (trackedTitleNames) {
+        for (const [gameId, titles] of Object.entries(trackedTitleNames)) {
+          if (titles.some((t) => nameLower.includes(t.toLowerCase()))) {
+            gameActivity[gameId] = {
+              lastPlayedAt: g.lastPlayedDateTime ?? null,
+              playDuration: g.playDuration ?? null,
+            };
+          }
+        }
+      }
     }
   }
 
@@ -133,6 +151,7 @@ export function normalizePsnProfile(
       fc26LastPlayedAt,
       fc26PlayDuration,
     },
+    gameActivity: Object.keys(gameActivity).length > 0 ? gameActivity : null,
     availability,
     fetchedAt: new Date().toISOString(),
   };

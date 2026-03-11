@@ -17,10 +17,10 @@ export function StatsGrid({ profile }: StatsGridProps) {
           ? `${Math.round((profile.stats_matches_won / profile.stats_matches_played) * 100)}%`
           : '—',
     },
-    { label: 'Goals For', value: profile.stats_goals_for },
-    { label: 'Goals Against', value: profile.stats_goals_against },
+    { label: 'Score For', value: profile.stats_goals_for },
+    { label: 'Score Against', value: profile.stats_goals_against },
     {
-      label: 'Goal Diff',
+      label: 'Score Diff',
       value: profile.stats_goals_for - profile.stats_goals_against,
       color:
         profile.stats_goals_for - profile.stats_goals_against > 0

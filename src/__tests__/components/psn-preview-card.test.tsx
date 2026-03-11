@@ -19,6 +19,7 @@ const mockProfile: NormalizedPsnProfile = {
     titleId: 'PPSA12345',
   },
   recentActivity: { fc26LastPlayedAt: '2026-03-10T12:00:00Z', fc26PlayDuration: 'PT5H' },
+  gameActivity: null,
   availability: 'public',
   fetchedAt: new Date().toISOString(),
 };
